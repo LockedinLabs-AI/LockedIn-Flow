@@ -78,6 +78,7 @@ private struct Options {
     let output: URL
     let sourceRevision: String
     let sourceState: String
+    let serialNumber: String
 }
 
 private let allowedComponentTypes: Set<String> = [
@@ -107,14 +108,17 @@ private func parseOptions() throws -> Options {
         index += 2
     }
 
-    let allowed = Set(["--root", "--output", "--source-revision", "--source-state"])
+    let allowed = Set([
+        "--root", "--output", "--source-revision", "--source-state", "--serial-number",
+    ])
     guard Set(values.keys).isSubset(of: allowed) else {
         throw SBOMError("unsupported command option")
     }
     guard let root = values["--root"],
-          let output = values["--output"],
-          let sourceRevision = values["--source-revision"],
-          let sourceState = values["--source-state"] else {
+        let output = values["--output"],
+        let sourceRevision = values["--source-revision"],
+        let sourceState = values["--source-state"]
+    else {
         throw SBOMError("required options: --root --output --source-revision --source-state")
     }
     guard sourceRevision.range(of: "^[0-9a-f]{40,64}$", options: .regularExpression) != nil else {
@@ -123,11 +127,24 @@ private func parseOptions() throws -> Options {
     guard ["clean", "modified"].contains(sourceState) else {
         throw SBOMError("source state must be clean or modified")
     }
+    // Each generated BOM gets a distinct RFC 4122 identity. An explicit identity
+    // is useful only when reproducing a previously generated document or fixture.
+    let serialNumber = values["--serial-number"] ?? "urn:uuid:\(UUID().uuidString.lowercased())"
+    guard
+        serialNumber.range(
+            of:
+                "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            options: .regularExpression
+        ) != nil
+    else {
+        throw SBOMError("serial number must be a lowercase RFC 4122 UUID URN")
+    }
     return Options(
         root: URL(fileURLWithPath: root, isDirectory: true).standardizedFileURL,
         output: URL(fileURLWithPath: output).standardizedFileURL,
         sourceRevision: sourceRevision,
-        sourceState: sourceState
+        sourceState: sourceState,
+        serialNumber: serialNumber
     )
 }
 
@@ -155,8 +172,9 @@ private func decodeJSON<T: Decodable>(
 
 private func safeURL(_ relativePath: String, root: URL) throws -> URL {
     guard !relativePath.isEmpty,
-          !relativePath.hasPrefix("/"),
-          !relativePath.split(separator: "/").contains("..") else {
+        !relativePath.hasPrefix("/"),
+        !relativePath.split(separator: "/").contains("..")
+    else {
         throw SBOMError("inventory paths must be repository-relative")
     }
     let result = root.appendingPathComponent(relativePath).standardizedFileURL
@@ -168,13 +186,16 @@ private func safeURL(_ relativePath: String, root: URL) throws -> URL {
 
 private func requirePublicHTTPS(_ value: String, label: String) throws {
     guard let url = URL(string: value),
-          url.scheme == "https",
-          url.host != nil,
-          url.user == nil,
-          url.password == nil,
-          url.query == nil,
-          url.fragment == nil else {
-        throw SBOMError("\(label) must be a public HTTPS URL without credentials, query parameters, or fragments")
+        url.scheme == "https",
+        url.host != nil,
+        url.user == nil,
+        url.password == nil,
+        url.query == nil,
+        url.fragment == nil
+    else {
+        throw SBOMError(
+            "\(label) must be a public HTTPS URL without credentials, query parameters, or fragments"
+        )
     }
 }
 
@@ -198,11 +219,13 @@ private func sha256(_ data: Data) -> String {
 /// refused so generation cannot traverse outside the declared component.
 private func sourceTreeSHA256(relativePath: String, root: URL) throws -> String {
     let directory = try safeURL(relativePath, root: root)
-    guard let enumerator = FileManager.default.enumerator(
-        at: directory,
-        includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
-        options: [.skipsHiddenFiles]
-    ) else {
+    guard
+        let enumerator = FileManager.default.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
+            options: [.skipsHiddenFiles]
+        )
+    else {
         throw SBOMError("cannot enumerate vendored component: \(relativePath)")
     }
 
@@ -221,10 +244,12 @@ private func sourceTreeSHA256(relativePath: String, root: URL) throws -> String 
         let directoryComponents = directory.standardizedFileURL.pathComponents
         let fileComponents = url.standardizedFileURL.pathComponents
         guard fileComponents.count > directoryComponents.count,
-              Array(fileComponents.prefix(directoryComponents.count)) == directoryComponents else {
+            Array(fileComponents.prefix(directoryComponents.count)) == directoryComponents
+        else {
             throw SBOMError("vendored component enumeration escaped its root")
         }
-        files.append((fileComponents.dropFirst(directoryComponents.count).joined(separator: "/"), url))
+        files.append(
+            (fileComponents.dropFirst(directoryComponents.count).joined(separator: "/"), url))
     }
     guard !files.isEmpty else {
         throw SBOMError("vendored component has no source files: \(relativePath)")
@@ -247,8 +272,10 @@ private func sourceTreeSHA256(relativePath: String, root: URL) throws -> String 
 private func readInfoPlist(root: URL) throws -> [String: Any] {
     let data = try readData("Info.plist", root: root)
     do {
-        guard let object = try PropertyListSerialization.propertyList(from: data, format: nil)
-                as? [String: Any] else {
+        guard
+            let object = try PropertyListSerialization.propertyList(from: data, format: nil)
+                as? [String: Any]
+        else {
             throw SBOMError("Info.plist must contain a dictionary")
         }
         return object
@@ -261,7 +288,8 @@ private func readInfoPlist(root: URL) throws -> [String: Any] {
 
 private func requiredPlistString(_ key: String, from plist: [String: Any]) throws -> String {
     guard let value = plist[key] as? String,
-          !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
         throw SBOMError("Info.plist is missing required value: \(key)")
     }
     return value
@@ -296,42 +324,51 @@ private func generate(options: Options) throws -> Data {
     var inventoryPackages: [String: Inventory.SwiftPackage] = [:]
     for package in inventory.swiftPackages {
         guard inventoryPackages[package.identity] == nil else {
-            throw SBOMError("SBOM inventory contains duplicate Swift package identity: \(package.identity)")
+            throw SBOMError(
+                "SBOM inventory contains duplicate Swift package identity: \(package.identity)")
         }
         inventoryPackages[package.identity] = package
     }
     var resolvedPackages: [String: PackageResolved.Pin] = [:]
     for pin in resolved.pins {
         guard resolvedPackages[pin.identity] == nil else {
-            throw SBOMError("Package.resolved contains duplicate Swift package identity: \(pin.identity)")
+            throw SBOMError(
+                "Package.resolved contains duplicate Swift package identity: \(pin.identity)")
         }
         resolvedPackages[pin.identity] = pin
     }
 
     let unknownPins = Set(resolvedPackages.keys).subtracting(inventoryPackages.keys).sorted()
     guard unknownPins.isEmpty else {
-        throw SBOMError("Package.resolved contains uninventoryed Swift package: \(unknownPins.joined(separator: ", "))")
+        throw SBOMError(
+            "Package.resolved contains uninventoryed Swift package: \(unknownPins.joined(separator: ", "))"
+        )
     }
     let missingPins = Set(inventoryPackages.keys).subtracting(resolvedPackages.keys).sorted()
     guard missingPins.isEmpty else {
-        throw SBOMError("SBOM inventory package is absent from Package.resolved: \(missingPins.joined(separator: ", "))")
+        throw SBOMError(
+            "SBOM inventory package is absent from Package.resolved: \(missingPins.joined(separator: ", "))"
+        )
     }
 
     var components: [[String: Any]] = []
     var refsByIdentity: [String: String] = [:]
     for identity in inventoryPackages.keys.sorted() {
         guard let specification = inventoryPackages[identity],
-              let pin = resolvedPackages[identity] else { continue }
+            let pin = resolvedPackages[identity]
+        else { continue }
         try requirePublicHTTPS(specification.expectedLocation, label: "Swift package location")
         guard pin.location == specification.expectedLocation else {
-            throw SBOMError("Package.resolved location does not match reviewed inventory: \(identity)")
+            throw SBOMError(
+                "Package.resolved location does not match reviewed inventory: \(identity)")
         }
         guard pin.kind == "remoteSourceControl" else {
             throw SBOMError("unsupported Swift package source kind: \(identity)")
         }
         guard let version = pin.state.version, !version.isEmpty,
-              let revision = pin.state.revision,
-              revision.range(of: "^[0-9a-f]{40,64}$", options: .regularExpression) != nil else {
+            let revision = pin.state.revision,
+            revision.range(of: "^[0-9a-f]{40,64}$", options: .regularExpression) != nil
+        else {
             throw SBOMError("Swift package is not pinned to a version and commit: \(identity)")
         }
         let ref = "pkg:github/\(specification.group)/\(specification.name)@\(version)"
@@ -377,7 +414,9 @@ private func generate(options: Options) throws -> Data {
                 property("com.lockedinflow.component.version-status", "declared-upstream-version"),
                 property("com.lockedinflow.license.sha256", licenseHash),
                 property("com.lockedinflow.source-tree.sha256", treeHash),
-                property("com.lockedinflow.source-tree.hash-algorithm", "sorted-relative-path-nul-file-bytes-nul"),
+                property(
+                    "com.lockedinflow.source-tree.hash-algorithm",
+                    "sorted-relative-path-nul-file-bytes-nul"),
             ].sorted { $0["name"]! < $1["name"]! },
         ])
         applicationDependencies.append(component.bomRef)
@@ -386,9 +425,11 @@ private func generate(options: Options) throws -> Data {
     var dependenciesByParent: [String: [String]] = [:]
     for component in inventory.runtimeComponents {
         guard allowedComponentTypes.contains(component.type),
-              allowedScopes.contains(component.scope),
-              allowedReferenceTypes.contains(component.referenceType) else {
-            throw SBOMError("runtime component contains an unsupported CycloneDX value: \(component.bomRef)")
+            allowedScopes.contains(component.scope),
+            allowedReferenceTypes.contains(component.referenceType)
+        else {
+            throw SBOMError(
+                "runtime component contains an unsupported CycloneDX value: \(component.bomRef)")
         }
         try requirePublicHTTPS(component.sourceURL, label: "runtime component source")
         components.append([
@@ -403,7 +444,8 @@ private func generate(options: Options) throws -> Data {
             "properties": [
                 property("com.lockedinflow.component.provisioning", component.provisioning),
                 property("com.lockedinflow.component.version-status", component.versionStatus),
-                property("com.lockedinflow.component.artifact-hash-status", component.artifactHashStatus),
+                property(
+                    "com.lockedinflow.component.artifact-hash-status", component.artifactHashStatus),
             ].sorted { $0["name"]! < $1["name"]! },
         ])
         if component.dependencyParent == "application" {
@@ -411,7 +453,8 @@ private func generate(options: Options) throws -> Data {
         } else if let parentRef = refsByIdentity[component.dependencyParent] {
             dependenciesByParent[parentRef, default: []].append(component.bomRef)
         } else {
-            throw SBOMError("runtime component references an unknown dependency parent: \(component.bomRef)")
+            throw SBOMError(
+                "runtime component references an unknown dependency parent: \(component.bomRef)")
         }
     }
 
@@ -423,10 +466,12 @@ private func generate(options: Options) throws -> Data {
         throw SBOMError("SBOM inventory produces duplicate component references")
     }
 
-    var dependencies: [[String: Any]] = [[
-        "ref": rootRef,
-        "dependsOn": Array(Set(applicationDependencies)).sorted(),
-    ]]
+    var dependencies: [[String: Any]] = [
+        [
+            "ref": rootRef,
+            "dependsOn": Array(Set(applicationDependencies)).sorted(),
+        ]
+    ]
     for ref in componentRefs {
         dependencies.append([
             "ref": ref,
@@ -455,6 +500,7 @@ private func generate(options: Options) throws -> Data {
         "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",
+        "serialNumber": options.serialNumber,
         "version": 1,
         "metadata": [
             "lifecycles": [["phase": "build"]],
@@ -464,9 +510,11 @@ private func generate(options: Options) throws -> Data {
                 "name": appName,
                 "version": appVersion,
                 "purl": rootRef,
-                "licenses": [[
-                    "license": ["id": "MIT"]
-                ]],
+                "licenses": [
+                    [
+                        "license": ["id": "MIT"]
+                    ]
+                ],
                 "properties": [
                     property("com.lockedinflow.app.build-number", buildNumber),
                     property("com.lockedinflow.app.bundle-identifier", bundleID),
@@ -476,11 +524,13 @@ private func generate(options: Options) throws -> Data {
         ],
         "components": components,
         "dependencies": dependencies,
-        "compositions": [[
-            "aggregate": "incomplete",
-            "assemblies": [rootRef],
-            "dependencies": componentRefs,
-        ]],
+        "compositions": [
+            [
+                "aggregate": "incomplete",
+                "assemblies": [rootRef],
+                "dependencies": componentRefs,
+            ]
+        ],
     ]
 
     guard JSONSerialization.isValidJSONObject(document) else {
