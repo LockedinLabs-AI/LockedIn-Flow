@@ -16,7 +16,7 @@ const textExtensions = new Set([
   ".sh", ".mjs", ".jq", ".tsv", ".csv", ".strings", ".resolved",
 ]);
 
-export function scanText(text, { attribution = false } = {}) {
+export function scanText(text, { attribution = false, commitMetadata = false } = {}) {
   const rules = [];
   if (/\/(?:Users|home)\/[A-Za-z0-9._-]+\//.test(text)
       || /[A-Z]:\\Users\\[^\\\r\n]+\\/i.test(text)) rules.push("personal-home-path");
@@ -30,6 +30,9 @@ export function scanText(text, { attribution = false } = {}) {
   }
   const emails = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
   if (!attribution && emails.some((email) => {
+    // GitHub signs web/automation commits with this public service identity.
+    // This exception applies to commit metadata, never source or prose.
+    if (commitMetadata && email.toLowerCase() === ["noreply", "github.com"].join("@")) return false;
     if (/^[a-z0-9_-]+@[23]x\.png$/i.test(email)) return false;
     const domain = email.split("@")[1].toLowerCase();
     return !/^(?:example\.(?:com|org|net)|[a-z0-9.-]+\.example|[a-z0-9.-]+\.invalid|lockedinlabs\.ai|lockedinflow\.com|(?:[a-z0-9.-]+\.)?users\.noreply\.github\.com)$/.test(domain);

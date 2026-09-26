@@ -63,7 +63,7 @@ try {
         fileCount++;
       }
       const metadata = git("show", "-s", "--format=%an%n%ae%n%cn%n%ce%n%B", revision).toString();
-      report("commit metadata", scanText(metadata), revision.slice(0, 12));
+      report("commit metadata", scanText(metadata, { commitMetadata: true }), revision.slice(0, 12));
       checkLinks(contents, revision.slice(0, 12));
       revisionCount++;
     }
