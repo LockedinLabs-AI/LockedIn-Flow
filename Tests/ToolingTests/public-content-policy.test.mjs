@@ -27,9 +27,11 @@ test("publication policy catches personal context and conversation exports", () 
 });
 
 test("GitHub's public commit identity is allowed only in commit metadata", () => {
-  const address = ["noreply", "github.com"].join("@");
-  assert.deepEqual(scanText(address, { commitMetadata: true }), []);
-  assert.ok(scanText(address).includes("unreviewed-contact-address"));
+  for (const name of ["noreply", "support"]) {
+    const address = [name, "github.com"].join("@");
+    assert.deepEqual(scanText(address, { commitMetadata: true }), []);
+    assert.ok(scanText(address).includes("unreviewed-contact-address"));
+  }
   assert.ok(scanText(["synthetic", "unreviewed.test"].join("@"), { commitMetadata: true })
     .includes("unreviewed-contact-address"));
 });
