@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -102,7 +103,7 @@ jobs:
           cp "build/LockedIn Flow Community.app/Contents/Resources/SBOM.cdx.json" \
             "build/LockedIn-Flow-Community-SBOM.cdx.json"
       - name: Upload protected-main evaluation artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: LockedIn-Flow-Community-unsigned-${{ github.sha }}
@@ -113,7 +114,7 @@ jobs:
           retention-days: 7
 
   attest-public-evaluation:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.repository.private == false
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && github.event.repository.private == false
     needs: build-test
     runs-on: ubuntu-latest
     permissions:

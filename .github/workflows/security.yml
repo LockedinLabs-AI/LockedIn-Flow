@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   dependency-advisories:
     name: Dependency advisories
@@ -37,15 +41,19 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+      - name: Verify pinned analysis toolchain
+        run: scripts/verify-build-toolchain.sh
       - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
         with:
           languages: swift
           build-mode: manual
-      - name: Verify pinned analysis toolchain
-        run: scripts/verify-build-toolchain.sh
       - name: Build analyzed target
         run: swift build -c release --product lockedin-flow-community --force-resolved-versions
       - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          output: build/codeql
+      - name: Reject analysis findings or incomplete evidence
+        run: node scripts/check-codeql-results.mjs build/codeql/swift.sarif
 
   secret-scan:
     name: TruffleHog

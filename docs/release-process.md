@@ -15,6 +15,8 @@ separate pieces of evidence.
 - public-content and local documentation-link checks pass with `npm run check:public`;
 - SBOM generation and validation pass;
 - CodeQL, dependency review, and secret scanning pass;
+- CodeQL produces a populated SARIF analysis with zero findings; successful
+  scanner execution or upload alone does not satisfy the gate;
 - dependency and model-license changes are reviewed; and
 - release notes identify limitations and migration impact.
 

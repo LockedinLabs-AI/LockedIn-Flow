@@ -66,6 +66,8 @@ evidence are approved.
 
 ### Security
 
+- Removed transcript-length metadata from the dictation-completion diagnostic;
+  it now emits only a fixed event, with a regression policy guarding that boundary.
 - Replaced arbitrary-string logging with a typed, content-free interface. System
   error descriptions, local paths, and destination app identifiers are no longer
   included in application diagnostics.

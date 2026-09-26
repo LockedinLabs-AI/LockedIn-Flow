@@ -411,9 +411,9 @@ final class DictationController {
             }
             activeDictationContext = nil
             activeCaptureWasInterrupted = false
-            FlowLog.pipeline(
-                "dictation inserted chars=\(result.charactersInserted)"
-            )
+            // Delivery diagnostics must not depend on transcript content,
+            // including its length. Keep completion as a fixed event.
+            FlowLog.pipeline("dictation inserted")
             if state.learnFromEditsEnabled,
                 insertionTarget.supportsExactPostDeliveryObservation
             {
