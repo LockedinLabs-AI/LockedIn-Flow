@@ -128,15 +128,15 @@ jobs:
           name: LockedIn-Flow-Community-unsigned-${{ github.sha }}
           path: build
       - name: Attest build provenance
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: build/LockedIn-Flow-Community-unsigned.zip
       - name: Attest evaluation package provenance
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: build/LockedIn-Flow-Community-evaluation-unsigned.pkg
       - name: Attest packaged SBOM
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: build/LockedIn-Flow-Community-unsigned.zip
           sbom-path: build/LockedIn-Flow-Community-SBOM.cdx.json
