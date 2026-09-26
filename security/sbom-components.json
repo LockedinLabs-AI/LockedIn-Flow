@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "swiftPackages": [
+    {
+      "identity": "fluidaudio",
+      "name": "FluidAudio",
+      "group": "FluidInference",
+      "description": "Local speech recognition, voice activity detection, and Apple Neural Engine runtime.",
+      "expectedLocation": "https://github.com/FluidInference/FluidAudio.git",
+      "license": {
+        "id": "Apache-2.0"
+      }
+    }
+  ],
+  "vendoredComponents": [
+    {
+      "bomRef": "pkg:github/sindresorhus/KeyboardShortcuts@2.4.0",
+      "name": "KeyboardShortcuts",
+      "group": "sindresorhus",
+      "version": "2.4.0",
+      "description": "Global keyboard shortcut handling; locally patched only for app-bundle localization lookup.",
+      "sourcePath": "Vendor/KeyboardShortcuts",
+      "licensePath": "Vendor/KeyboardShortcuts/LICENSE",
+      "sourceURL": "https://github.com/sindresorhus/KeyboardShortcuts",
+      "license": {
+        "id": "MIT"
+      },
+      "modificationNote": "Localization resources are loaded from Bundle.main for LockedIn Flow's manually assembled macOS app bundle."
+    }
+  ],
+  "runtimeComponents": [
+    {
+      "bomRef": "embedded:fluidaudio/fastcluster",
+      "type": "library",
+      "name": "fastcluster",
+      "group": "fastcluster",
+      "scope": "required",
+      "description": "Hierarchical clustering source embedded by the pinned FluidAudio package.",
+      "sourceURL": "https://github.com/fastcluster/fastcluster",
+      "referenceType": "documentation",
+      "dependencyParent": "fluidaudio",
+      "provisioning": "embedded-in-fluidaudio",
+      "versionStatus": "upstream-version-not-declared-by-fluidaudio",
+      "artifactHashStatus": "covered-by-pinned-fluidaudio-source-revision",
+      "license": {
+        "id": "BSD-2-Clause"
+      }
+    },
+    {
+      "bomRef": "embedded:fluidaudio/VBx",
+      "type": "library",
+      "name": "VBx",
+      "group": "BUTSpeechFIT",
+      "scope": "required",
+      "description": "Speaker-clustering implementation embedded by the pinned FluidAudio package.",
+      "sourceURL": "https://github.com/BUTSpeechFIT/VBx",
+      "referenceType": "documentation",
+      "dependencyParent": "fluidaudio",
+      "provisioning": "embedded-in-fluidaudio",
+      "versionStatus": "upstream-version-not-declared-by-fluidaudio",
+      "artifactHashStatus": "covered-by-pinned-fluidaudio-source-revision",
+      "license": {
+        "id": "Apache-2.0"
+      }
+    },
+    {
+      "bomRef": "model:huggingface/FluidInference/parakeet-tdt-0.6b-v3-coreml",
+      "type": "machine-learning-model",
+      "name": "Parakeet TDT 0.6B v3 CoreML",
+      "group": "FluidInference",
+      "scope": "required",
+      "description": "Default local multilingual speech-recognition model provisioned before application use.",
+      "sourceURL": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml",
+      "referenceType": "model-card",
+      "dependencyParent": "fluidaudio",
+      "provisioning": "external-preprovisioning",
+      "versionStatus": "pinned-revision-7dd20fe6b1797d35f5e3307e8b1732d9a178edfe",
+      "artifactHashStatus": "all-21-runtime-files-sha256-pinned-in-source",
+      "license": {
+        "id": "CC-BY-4.0"
+      }
+    },
+    {
+      "bomRef": "model:huggingface/FluidInference/parakeet-unified-en-0.6b-coreml",
+      "type": "machine-learning-model",
+      "name": "Parakeet Unified EN 0.6B CoreML",
+      "group": "FluidInference",
+      "scope": "optional",
+      "description": "Optional local English-specialized speech-recognition model provisioned before application use.",
+      "sourceURL": "https://huggingface.co/FluidInference/parakeet-unified-en-0.6b-coreml",
+      "referenceType": "model-card",
+      "dependencyParent": "fluidaudio",
+      "provisioning": "external-preprovisioning",
+      "versionStatus": "pinned-revision-4252711f6f060f9a2f91e5f081a806d7f45eebd8",
+      "artifactHashStatus": "all-13-runtime-files-sha256-pinned-in-source",
+      "license": {
+        "id": "CC-BY-4.0"
+      }
+    },
+    {
+      "bomRef": "model:huggingface/FluidInference/silero-vad-coreml",
+      "type": "machine-learning-model",
+      "name": "Silero VAD CoreML",
+      "group": "FluidInference",
+      "scope": "optional",
+      "description": "Optional local voice-activity model provisioned before application use for edge trimming.",
+      "sourceURL": "https://huggingface.co/FluidInference/silero-vad-coreml",
+      "referenceType": "model-card",
+      "dependencyParent": "fluidaudio",
+      "provisioning": "external-preprovisioning",
+      "versionStatus": "pinned-revision-b419383c55c110e2c9271fa6ee0ea83d03c70d96",
+      "artifactHashStatus": "all-5-runtime-files-sha256-pinned-in-source",
+      "license": {
+        "id": "MIT"
+      }
+    },
+    {
+      "bomRef": "platform:apple/FoundationModels",
+      "type": "framework",
+      "name": "FoundationModels",
+      "group": "Apple",
+      "scope": "optional",
+      "description": "Optional on-device language-model framework supplied by macOS 26 or later.",
+      "sourceURL": "https://developer.apple.com/documentation/foundationmodels",
+      "referenceType": "documentation",
+      "dependencyParent": "application",
+      "provisioning": "operating-system",
+      "versionStatus": "provided-by-macos-26-or-later",
+      "artifactHashStatus": "not-part-of-app-distribution",
+      "license": {
+        "name": "Apple platform license"
+      }
+    }
+  ]
+}

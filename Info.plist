@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>LockedIn Flow Community</string>
+    <key>CFBundleDisplayName</key>
+    <string>LockedIn Flow Community</string>
+    <key>CFBundleIdentifier</key>
+    <string>ai.lockedin.flow.community</string>
+    <key>CFBundleVersion</key>
+    <string>19</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.4.17</string>
+    <key>CFBundleExecutable</key>
+    <string>LockedInFlowCommunity</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>LockedInReleaseStage</key>
+	<string>release-candidate</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>LockedIn Flow transcribes your voice locally on this Mac. Audio never leaves the device.</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+</dict>
+</plist>

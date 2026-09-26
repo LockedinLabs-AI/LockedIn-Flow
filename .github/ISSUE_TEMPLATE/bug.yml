@@ -1,0 +1,49 @@
+name: Bug report
+description: Report reproducible behavior without sensitive content
+title: "[Bug]: "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include recordings, transcripts, credentials, customer data, or protected health information. Report security issues privately through SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: LockedIn Flow version
+      placeholder: "0.4.17"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS and hardware
+      placeholder: "macOS 26.x, Apple silicon"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Content-free reproduction
+      description: Use placeholder text and omit private application content.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Data safety
+      options:
+        - label: I removed credentials, personal data, customer data, transcripts, recordings, and protected health information.
+          required: true

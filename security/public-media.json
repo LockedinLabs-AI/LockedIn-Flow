@@ -1,0 +1,14 @@
+{
+  "description": "Reviewed brand assets and application views rendered with synthetic examples. No personal data or user history.",
+  "assets": {
+    "branding/raster/icon-1024.png": "8f8690f66cdb7c7236113d66b063ee295b62c2ccb0c740be0c0a113e3535be19",
+    "branding/raster/icon-128.png": "ea2429b9b1ef12ca637ac21efe4b3ddf9b446bdf8378a8df7e0b05323782f38c",
+    "branding/raster/icon-16.png": "de89769591a99785097542b55b115edd751cb15944c8f46d459a5e479b17367e",
+    "branding/raster/icon-256.png": "958a3f14e08dd3f0bdebf4a6f7126dca03028a2562f0cfb46ab504d7b837760e",
+    "branding/raster/icon-32.png": "6af50bc7b792bc5162195429411745ea4f2fb395f092a0fa3842e57818832390",
+    "branding/raster/icon-512.png": "d70762ef44ccc4ba0c85e450099a6db90c7d03b4c2487297b22eaadd9dc386bc",
+    "branding/raster/icon-64.png": "a589a568c55a9e1aaa717bd6d1ac767b35091b8fc277d02d9957b713227e2b97",
+    "docs/images/lockedin-flow-home-v2.png": "8923b10651442c8642fbbac1c37e1b5b8804f778ff57af8f72829c69f329cf83",
+    "docs/images/lockedin-flow-listening.png": "d5cf4742b20065d3abaaa18413c5bf11f5e924b7a17df934c44c527562fe16f4"
+  }
+}

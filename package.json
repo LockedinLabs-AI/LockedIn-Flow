@@ -1,0 +1,49 @@
+{
+  "name": "@lockedinlabs-ai/lockedin-flow",
+  "version": "0.4.17",
+  "private": true,
+  "description": "Developer tooling for the LockedIn Flow local-first macOS dictation app",
+  "keywords": [
+    "dictation",
+    "enterprise",
+    "macos",
+    "offline",
+    "on-device",
+    "privacy",
+    "speech-to-text"
+  ],
+  "homepage": "https://github.com/LockedinLabs-AI/lockedin-flow#readme",
+  "bugs": {
+    "url": "https://github.com/LockedinLabs-AI/lockedin-flow/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LockedinLabs-AI/lockedin-flow.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "lockedin-flow": "scripts/lockedin-flow.mjs"
+  },
+  "scripts": {
+    "check:public": "node scripts/check-public-content.mjs",
+    "build": "node scripts/lockedin-flow.mjs build",
+    "doctor": "node scripts/lockedin-flow.mjs doctor",
+    "install:local": "node scripts/lockedin-flow.mjs install",
+    "package:app": "node scripts/lockedin-flow.mjs package",
+    "package:pkg": "node scripts/lockedin-flow.mjs package-pkg",
+    "provision:models": "node scripts/lockedin-flow.mjs provision-models",
+    "setup:local": "node scripts/lockedin-flow.mjs setup",
+    "test": "node --test Tests/ToolingTests/*.test.mjs",
+    "test:swift": "node scripts/lockedin-flow.mjs test-swift"
+  }
+}

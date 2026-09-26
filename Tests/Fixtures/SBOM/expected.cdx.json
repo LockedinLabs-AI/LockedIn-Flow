@@ -1,0 +1,264 @@
+{
+  "$schema" : "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat" : "CycloneDX",
+  "components" : [
+    {
+      "bom-ref" : "model:huggingface/example/test-model",
+      "description" : "Synthetic runtime model used only for deterministic SBOM tests.",
+      "externalReferences" : [
+        {
+          "type" : "model-card",
+          "url" : "https://huggingface.co/example/test-model"
+        }
+      ],
+      "group" : "example",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "CC-BY-4.0"
+          }
+        }
+      ],
+      "name" : "Synthetic Test Model",
+      "properties" : [
+        {
+          "name" : "com.lockedinflow.component.artifact-hash-status",
+          "value" : "all-1-runtime-files-sha256-pinned-in-source"
+        },
+        {
+          "name" : "com.lockedinflow.component.provisioning",
+          "value" : "runtime-download"
+        },
+        {
+          "name" : "com.lockedinflow.component.version-status",
+          "value" : "pinned-revision-cccccccccccccccccccccccccccccccccccccccc"
+        }
+      ],
+      "scope" : "optional",
+      "type" : "machine-learning-model"
+    },
+    {
+      "bom-ref" : "pkg:github/example/ExampleLib@1.4.0",
+      "description" : "Synthetic package used only for deterministic SBOM tests.",
+      "externalReferences" : [
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/example/ExampleLib.git"
+        }
+      ],
+      "group" : "example",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "name" : "ExampleLib",
+      "properties" : [
+        {
+          "name" : "com.lockedinflow.component.provisioning",
+          "value" : "compiled-in"
+        },
+        {
+          "name" : "com.lockedinflow.component.version-status",
+          "value" : "pinned"
+        },
+        {
+          "name" : "com.lockedinflow.swiftpm.revision",
+          "value" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "purl" : "pkg:github/example/ExampleLib@1.4.0",
+      "scope" : "required",
+      "type" : "library",
+      "version" : "1.4.0"
+    },
+    {
+      "bom-ref" : "pkg:github/example/TestLibrary@2.0.0",
+      "description" : "Synthetic vendored component used only for deterministic SBOM tests.",
+      "externalReferences" : [
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/example/TestLibrary"
+        }
+      ],
+      "group" : "example",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "MIT"
+          }
+        }
+      ],
+      "name" : "TestLibrary",
+      "pedigree" : {
+        "notes" : "Synthetic fixture modification."
+      },
+      "properties" : [
+        {
+          "name" : "com.lockedinflow.component.provisioning",
+          "value" : "vendored-source"
+        },
+        {
+          "name" : "com.lockedinflow.component.version-status",
+          "value" : "declared-upstream-version"
+        },
+        {
+          "name" : "com.lockedinflow.license.sha256",
+          "value" : "01c7301ca745da49113cc756833673f6e305070b137c6007a6c06ccd1d5aa70f"
+        },
+        {
+          "name" : "com.lockedinflow.source-tree.hash-algorithm",
+          "value" : "sorted-relative-path-nul-file-bytes-nul"
+        },
+        {
+          "name" : "com.lockedinflow.source-tree.sha256",
+          "value" : "ee5bf58a189126301a2bcd715d9e1992257434f7244a271afe2dab17e737a9f6"
+        }
+      ],
+      "purl" : "pkg:github/example/TestLibrary@2.0.0",
+      "scope" : "required",
+      "type" : "library",
+      "version" : "2.0.0"
+    },
+    {
+      "bom-ref" : "platform:example/TestFramework",
+      "description" : "Synthetic operating-system framework used only for deterministic SBOM tests.",
+      "externalReferences" : [
+        {
+          "type" : "documentation",
+          "url" : "https://example.com/documentation/test-framework"
+        }
+      ],
+      "group" : "example",
+      "licenses" : [
+        {
+          "license" : {
+            "name" : "Synthetic platform license"
+          }
+        }
+      ],
+      "name" : "TestFramework",
+      "properties" : [
+        {
+          "name" : "com.lockedinflow.component.artifact-hash-status",
+          "value" : "not-part-of-app-distribution"
+        },
+        {
+          "name" : "com.lockedinflow.component.provisioning",
+          "value" : "operating-system"
+        },
+        {
+          "name" : "com.lockedinflow.component.version-status",
+          "value" : "provided-by-test-platform"
+        }
+      ],
+      "scope" : "optional",
+      "type" : "framework"
+    }
+  ],
+  "compositions" : [
+    {
+      "aggregate" : "incomplete",
+      "assemblies" : [
+        "pkg:generic/com.lockedinflow.sbom-fixture@1.2.3?build=42"
+      ],
+      "dependencies" : [
+        "model:huggingface/example/test-model",
+        "pkg:github/example/ExampleLib@1.4.0",
+        "pkg:github/example/TestLibrary@2.0.0",
+        "platform:example/TestFramework"
+      ]
+    }
+  ],
+  "dependencies" : [
+    {
+      "dependsOn" : [
+
+      ],
+      "ref" : "model:huggingface/example/test-model"
+    },
+    {
+      "dependsOn" : [
+        "pkg:github/example/ExampleLib@1.4.0",
+        "pkg:github/example/TestLibrary@2.0.0",
+        "platform:example/TestFramework"
+      ],
+      "ref" : "pkg:generic/com.lockedinflow.sbom-fixture@1.2.3?build=42"
+    },
+    {
+      "dependsOn" : [
+        "model:huggingface/example/test-model"
+      ],
+      "ref" : "pkg:github/example/ExampleLib@1.4.0"
+    },
+    {
+      "dependsOn" : [
+
+      ],
+      "ref" : "pkg:github/example/TestLibrary@2.0.0"
+    },
+    {
+      "dependsOn" : [
+
+      ],
+      "ref" : "platform:example/TestFramework"
+    }
+  ],
+  "metadata" : {
+    "component" : {
+      "bom-ref" : "pkg:generic/com.lockedinflow.sbom-fixture@1.2.3?build=42",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "MIT"
+          }
+        }
+      ],
+      "name" : "LockedIn SBOM Fixture",
+      "properties" : [
+        {
+          "name" : "com.lockedinflow.app.build-number",
+          "value" : "42"
+        },
+        {
+          "name" : "com.lockedinflow.app.bundle-identifier",
+          "value" : "com.lockedinflow.sbom-fixture"
+        }
+      ],
+      "purl" : "pkg:generic/com.lockedinflow.sbom-fixture@1.2.3?build=42",
+      "type" : "application",
+      "version" : "1.2.3"
+    },
+    "lifecycles" : [
+      {
+        "phase" : "build"
+      }
+    ],
+    "properties" : [
+      {
+        "name" : "com.lockedinflow.inventory.completeness",
+        "value" : "runtime-model-files-sha256-pinned-platform-libraries-excluded"
+      },
+      {
+        "name" : "com.lockedinflow.inventory.profile",
+        "value" : "mac-app-build-v1"
+      },
+      {
+        "name" : "com.lockedinflow.source.revision",
+        "value" : "1111111111111111111111111111111111111111"
+      },
+      {
+        "name" : "com.lockedinflow.source.state",
+        "value" : "clean"
+      },
+      {
+        "name" : "com.lockedinflow.swiftpm.origin-hash",
+        "value" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ]
+  },
+  "specVersion" : "1.6",
+  "version" : 1
+}

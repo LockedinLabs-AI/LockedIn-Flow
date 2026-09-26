@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "swiftPackages": [
+    {
+      "identity": "examplelib",
+      "name": "ExampleLib",
+      "group": "example",
+      "description": "Synthetic package used only for deterministic SBOM tests.",
+      "expectedLocation": "https://github.com/example/ExampleLib.git",
+      "license": {
+        "id": "Apache-2.0"
+      }
+    }
+  ],
+  "vendoredComponents": [
+    {
+      "bomRef": "pkg:github/example/TestLibrary@2.0.0",
+      "name": "TestLibrary",
+      "group": "example",
+      "version": "2.0.0",
+      "description": "Synthetic vendored component used only for deterministic SBOM tests.",
+      "sourcePath": "Vendor/TestLibrary",
+      "licensePath": "Vendor/TestLibrary/LICENSE",
+      "sourceURL": "https://github.com/example/TestLibrary",
+      "license": {
+        "id": "MIT"
+      },
+      "modificationNote": "Synthetic fixture modification."
+    }
+  ],
+  "runtimeComponents": [
+    {
+      "bomRef": "model:huggingface/example/test-model",
+      "type": "machine-learning-model",
+      "name": "Synthetic Test Model",
+      "group": "example",
+      "scope": "optional",
+      "description": "Synthetic runtime model used only for deterministic SBOM tests.",
+      "sourceURL": "https://huggingface.co/example/test-model",
+      "referenceType": "model-card",
+      "dependencyParent": "examplelib",
+      "provisioning": "runtime-download",
+      "versionStatus": "pinned-revision-cccccccccccccccccccccccccccccccccccccccc",
+      "artifactHashStatus": "all-1-runtime-files-sha256-pinned-in-source",
+      "license": {
+        "id": "CC-BY-4.0"
+      }
+    },
+    {
+      "bomRef": "platform:example/TestFramework",
+      "type": "framework",
+      "name": "TestFramework",
+      "group": "example",
+      "scope": "optional",
+      "description": "Synthetic operating-system framework used only for deterministic SBOM tests.",
+      "sourceURL": "https://example.com/documentation/test-framework",
+      "referenceType": "documentation",
+      "dependencyParent": "application",
+      "provisioning": "operating-system",
+      "versionStatus": "provided-by-test-platform",
+      "artifactHashStatus": "not-part-of-app-distribution",
+      "license": {
+        "name": "Synthetic platform license"
+      }
+    }
+  ]
+}

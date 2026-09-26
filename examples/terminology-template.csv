@@ -1,0 +1,6 @@
+# Synthetic example only. Do not commit employee or customer directory exports.
+spoken,written,caseSensitive,profiles
+f h i r,FHIR,false,general|coding
+ku ber net ees,Kubernetes,false,coding
+a nee ta rao,Anita Rao,false,email|chat
+jay wad,Jawad,false,email|chat

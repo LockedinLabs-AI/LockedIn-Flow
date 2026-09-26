@@ -1,0 +1,4 @@
+# local-folder	repository	revision	selection
+parakeet-tdt-0.6b-v3	FluidInference/parakeet-tdt-0.6b-v3-coreml	7dd20fe6b1797d35f5e3307e8b1732d9a178edfe	default
+parakeet-unified-en-0.6b	FluidInference/parakeet-unified-en-0.6b-coreml	4252711f6f060f9a2f91e5f081a806d7f45eebd8	optional
+silero-vad	FluidInference/silero-vad-coreml	b419383c55c110e2c9271fa6ee0ea83d03c70d96	default

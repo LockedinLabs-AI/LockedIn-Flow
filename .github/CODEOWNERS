@@ -1,0 +1,16 @@
+* @LockedinLabs-AI/lockedin-flow-maintainers
+
+/.github/ @LockedinLabs-AI/lockedin-flow-maintainers
+/Sources/InsertionEngine/ @LockedinLabs-AI/lockedin-flow-maintainers
+/Sources/VoiceCore/ @LockedinLabs-AI/lockedin-flow-maintainers
+/Sources/SpeechEngine/ @LockedinLabs-AI/lockedin-flow-maintainers
+/security/model-artifacts.tsv @LockedinLabs-AI/lockedin-flow-maintainers
+/security/model-sources.tsv @LockedinLabs-AI/lockedin-flow-maintainers
+/scripts/provision-models.mjs @LockedinLabs-AI/lockedin-flow-maintainers
+/scripts/lib/model-provisioning.mjs @LockedinLabs-AI/lockedin-flow-maintainers
+/package.json @LockedinLabs-AI/lockedin-flow-maintainers
+/package-lock.json @LockedinLabs-AI/lockedin-flow-maintainers
+/distribution/ @LockedinLabs-AI/lockedin-flow-maintainers
+/scripts/package-evaluation-pkg.sh @LockedinLabs-AI/lockedin-flow-maintainers
+/docs/security.md @LockedinLabs-AI/lockedin-flow-maintainers
+/docs/threat-model.md @LockedinLabs-AI/lockedin-flow-maintainers
