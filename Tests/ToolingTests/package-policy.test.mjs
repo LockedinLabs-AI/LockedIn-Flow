@@ -22,10 +22,14 @@ test("release and repository metadata stay aligned", () => {
   assert.equal(packageLock.version, version);
   assert.equal(packageLock.packages[""].version, version);
   assert.match(provisioner, new RegExp(`LockedIn-Flow-Provisioner/${version}`));
-  assert.equal(packageJSON.repository.url, "git+https://github.com/LockedinLabs-AI/lockedin-flow.git");
-  assert.equal(packageJSON.homepage, "https://github.com/LockedinLabs-AI/lockedin-flow#readme");
+  assert.equal(packageJSON.repository.url, "git+https://github.com/LockedinLabs-AI/lockedin-flow-community.git");
+  assert.equal(packageJSON.homepage, "https://github.com/LockedinLabs-AI/lockedin-flow-community#readme");
   assert.equal(packageJSON.license, "MIT");
   assert.equal(packageLock.packages[""].license, "MIT");
+  for (const document of ["README.md", "docs/getting-started.md"]) {
+    const text = readFileSync(path.join(repositoryRoot, document), "utf8");
+    assert.match(text, /git clone https:\/\/github\.com\/LockedinLabs-AI\/lockedin-flow-community\.git\ncd lockedin-flow-community\n/);
+  }
 });
 
 test("npm developer tooling is a single zero-dependency package with no lifecycle execution", () => {

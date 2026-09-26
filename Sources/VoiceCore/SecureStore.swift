@@ -17,16 +17,20 @@ public enum SecureStore {
     private static let service = AppBuildIdentity.keychainService
     private static let account = "local-storage-key"
 
-    /// Fixed 32-byte key used ONLY under XCTest (never in app builds at runtime).
-    private static let testKeyData = Data((0..<32).map { UInt8($0 &* 7 &+ 11) })
+    #if DEBUG
+        /// Synthetic test key, excluded entirely from release compilation.
+        private static let testKeyData = Data((0..<32).map { UInt8($0 &* 7 &+ 11) })
+    #endif
 
     public static func encryptionKey() throws -> SymmetricKey {
-        // Tests must never touch the real Keychain: signature changes (ad-hoc ↔
-        // Developer ID) turn SecItemCopyMatching into a GUI prompt, which hangs
-        // headless runners. Under XCTest use a process-ephemeral key instead.
-        if NSClassFromString("XCTestCase") != nil {
-            return SymmetricKey(data: testKeyData)
-        }
+        #if DEBUG
+            // Tests must never touch the real Keychain: signature changes (ad-hoc ↔
+            // Developer ID) turn SecItemCopyMatching into a GUI prompt, which hangs
+            // headless runners. Under XCTest use a process-ephemeral key instead.
+            if NSClassFromString("XCTestCase") != nil {
+                return SymmetricKey(data: testKeyData)
+            }
+        #endif
         if let existing = try loadKey() { return existing }
         return try createKey()
     }

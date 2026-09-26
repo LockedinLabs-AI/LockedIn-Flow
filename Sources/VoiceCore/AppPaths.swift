@@ -8,8 +8,12 @@ enum AppBuildIdentity {
 
 enum AppRuntime {
     static let isRunningTests: Bool = {
-        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-            || NSClassFromString("XCTestCase") != nil
+        #if DEBUG
+            ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+                || NSClassFromString("XCTestCase") != nil
+        #else
+            false
+        #endif
     }()
 
     static let userDefaults: UserDefaults = {

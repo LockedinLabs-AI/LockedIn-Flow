@@ -13,13 +13,14 @@ against each tested revision. A later commit must run the relevant checks again.
 | Gate | Result |
 | --- | --- |
 | Swift tests | 538 passed, 0 failed, including content-free logging regressions |
-| npm tooling tests | 32 passed, including provisioning, real macOS ACL cases, and full-history privacy checks |
+| npm tooling tests | 39 passed, including provisioning, macOS ACL cases, history privacy, clipboard policy, and advisory-service failures |
 | Formatting | Strict `swift-format` lint passed |
 | Builds | Debug and release builds passed with the pinned toolchain |
 | Binary diagnostic | Production-binary diagnostic passed |
 | SBOM | 5 generation and validation tests passed |
 | Binary policy | 41 checks passed |
 | Runtime network source policy | Passed |
+| Dependency advisories | OSV returned no matching advisories for the exact FluidAudio and vendored KeyboardShortcuts revisions on 26 September 2026; see the limited coverage in [Third-party risk](third-party-risk.md) |
 | Publication content | Candidate-tree checks pass; full reachable-history review is required on the final publication repository |
 | Secret scan | TruffleHog is required with verified, unknown, and unverified results enabled; consult the exact revision's Security check |
 | Evaluation packaging | CI builds and verifies an ad-hoc app and unsigned, no-script PKG; consult the exact revision's build check |

@@ -39,6 +39,13 @@ evidence are approved.
 
 ### Fixed
 
+- Restrict all transcript clipboard writes and restoration to the current Mac
+  using the operating system's cross-device clipboard exclusion option.
+- Exclude test-mode Keychain and preferences hooks from release compilation and
+  reject their markers during production-binary verification.
+- Check exact dependency revisions against current OSV advisories in CI and on
+  a recurring schedule, with failures treated as incomplete evidence.
+
 - Reworked ordinary dynamic-editor capture to verify coherent observations of
   the focused text target instead of scanning a changing full-window
   Accessibility tree.

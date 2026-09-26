@@ -23,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Verify pinned release toolchain
         run: scripts/verify-build-toolchain.sh
@@ -35,6 +36,7 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm test
           npm run check:public
+          npm run check:public -- --history
           git diff --exit-code -- package-lock.json
       - name: Swift format lint
         run: xcrun swift-format lint --strict --recursive Sources Tests Package.swift

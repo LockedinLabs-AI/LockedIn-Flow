@@ -566,7 +566,7 @@ struct PasteboardContentsSnapshot: Equatable {
 
     @discardableResult
     func restore(to pasteboard: NSPasteboard) -> Bool {
-        let restoredChangeCount = pasteboard.clearContents()
+        let restoredChangeCount = pasteboard.prepareForNewContents(with: .currentHostOnly)
         if !items.isEmpty,
             !pasteboard.writeObjects(items.map { $0.makePasteboardItem() })
         {
@@ -664,7 +664,7 @@ func writePasteboardString(
     guard pasteboard.changeCount == expectedChangeCount else {
         return .newerContentPreserved
     }
-    let clearedChangeCount = pasteboard.clearContents()
+    let clearedChangeCount = pasteboard.prepareForNewContents(with: .currentHostOnly)
     guard clearedChangeCount == (expectedChangeCount &+ 1) else {
         return .outcomeUnverified
     }
@@ -835,10 +835,10 @@ func withStagedPasteboardString(
     guard pasteboard.changeCount == savedChangeCount else {
         throw InsertionError.clipboardChangedBeforeInsertion
     }
-    // `clearContents` claims the next pasteboard generation; `writeObjects`
+    // Device-local preparation claims the next generation; `writeObjects`
     // fills that generation without advancing it. These checks detect races
     // and validate exact readback, but macOS exposes no cross-process CAS.
-    let clearedChangeCount = pasteboard.clearContents()
+    let clearedChangeCount = pasteboard.prepareForNewContents(with: .currentHostOnly)
     guard clearedChangeCount == (savedChangeCount &+ 1) else {
         throw InsertionError.clipboardRestorationUnverified
     }
@@ -947,7 +947,7 @@ func withStagedPasteboardString(
     }
     // See the synchronous helper: the clear owns the generation and the one
     // `writeObjects` call fills it. This is race detection, not an atomic CAS.
-    let clearedChangeCount = pasteboard.clearContents()
+    let clearedChangeCount = pasteboard.prepareForNewContents(with: .currentHostOnly)
     guard clearedChangeCount == (savedChangeCount &+ 1) else {
         throw InsertionError.clipboardRestorationUnverified
     }

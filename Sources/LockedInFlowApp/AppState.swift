@@ -711,7 +711,7 @@ final class AppState: ObservableObject {
     func copyLastTranscript() {
         guard !lastFinal.isEmpty else { return }
         let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
+        pasteboard.prepareForNewContents(with: .currentHostOnly)
         pasteboard.setString(lastFinal, forType: .string)
         statusMessage = "Copied to clipboard"
     }

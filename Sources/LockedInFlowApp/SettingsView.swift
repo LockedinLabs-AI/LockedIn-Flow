@@ -286,7 +286,8 @@ struct SettingsView: View {
                 Link(
                     "View source releases…",
                     destination: URL(
-                        string: "https://github.com/LockedinLabs-AI/lockedin-flow/releases"
+                        string:
+                            "https://github.com/LockedinLabs-AI/lockedin-flow-community/releases"
                     )!
                 )
                 Text("Community builds do not contact an automatic update service.")

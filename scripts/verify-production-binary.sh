@@ -16,6 +16,8 @@ if [ ! -s "$EXECUTABLE" ]; then
 fi
 
 FORBIDDEN_SIGNATURES=(
+    "XCTestCase"
+    "XCTestConfigurationFilePath"
     "--render-marketing-preview"
     "--selftest-stt"
     "--selftest-stt-soak"

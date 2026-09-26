@@ -271,7 +271,7 @@ struct HistoryView: View {
 
     private func copy(_ text: String) {
         let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
+        pasteboard.prepareForNewContents(with: .currentHostOnly)
         pasteboard.setString(text, forType: .string)
     }
 

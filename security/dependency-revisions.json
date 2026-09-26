@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "vendored": [
+    {
+      "name": "KeyboardShortcuts",
+      "version": "2.4.0",
+      "commit": "1aef85578fdd4f9eaeeb8d53b7b4fc31bf08fe27",
+      "repository": "https://github.com/sindresorhus/KeyboardShortcuts"
+    }
+  ]
+}

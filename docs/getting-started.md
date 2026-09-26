@@ -23,8 +23,8 @@ Apple Swift 6.3.3, and the macOS 26.5 SDK. Xcode is needed to build from source;
 Node is not used by the installed application.
 
 ```bash
-git clone https://github.com/LockedinLabs-AI/lockedin-flow.git
-cd lockedin-flow
+git clone https://github.com/LockedinLabs-AI/lockedin-flow-community.git
+cd lockedin-flow-community
 npm ci --ignore-scripts --no-audit --no-fund
 npm run doctor
 npm run setup:local -- --launch

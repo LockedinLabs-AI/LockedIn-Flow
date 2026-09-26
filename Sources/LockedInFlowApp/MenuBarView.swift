@@ -463,16 +463,16 @@ struct MenuBarView: View {
 
     private func copy(_ text: String) {
         let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
+        pasteboard.prepareForNewContents(with: .currentHostOnly)
         pasteboard.setString(text, forType: .string)
         state.statusMessage = "Copied to clipboard"
     }
 
     private func copyRepositoryLink() {
         let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
+        pasteboard.prepareForNewContents(with: .currentHostOnly)
         pasteboard.setString(
-            "https://github.com/LockedinLabs-AI/lockedin-flow",
+            "https://github.com/LockedinLabs-AI/lockedin-flow-community",
             forType: .string
         )
         state.statusMessage = "Project link copied"

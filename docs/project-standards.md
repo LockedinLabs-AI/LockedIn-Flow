@@ -4,6 +4,10 @@ LockedIn Flow is developed for reviewable, on-device voice input. This page
 connects the project's practices to established open-source and software supply
 chain guidance. It is an implementation map, not a certification or a badge.
 
+See the [AI-assisted development lifecycle](secure-development.md) and
+[third-party risk register](third-party-risk.md) for operational ownership,
+adversarial-review scope, and evidence boundaries.
+
 ## Reference practices
 
 | Reference | Application in this project | Evidence |

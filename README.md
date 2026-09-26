@@ -25,9 +25,12 @@
   <a href="docs/project-standards.md">Engineering standards</a>
 </p>
 
+Engineering evidence: [AI-assisted SDLC](docs/secure-development.md) ·
+[Third-party risk](docs/third-party-risk.md) · [Validation](docs/validation.md).
+
 <p align="center">
-  <a href="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/security.yml"><img alt="Security checks" src="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/security.yml/badge.svg"></a>
+  <a href="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/security.yml"><img alt="Security checks" src="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/security.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="https://support.apple.com/macos"><img alt="macOS 15 or newer" src="https://img.shields.io/badge/macOS-15%2B-0b0c0f.svg"></a>
 </p>
@@ -169,8 +172,8 @@ is not used by the installed app. The reproducible source-evaluation path is pin
 those exact versions before setup changes the machine.
 
 ```bash
-git clone https://github.com/LockedinLabs-AI/lockedin-flow.git
-cd lockedin-flow
+git clone https://github.com/LockedinLabs-AI/lockedin-flow-community.git
+cd lockedin-flow-community
 npm ci --ignore-scripts --no-audit --no-fund
 npm run doctor
 npm run setup:local
