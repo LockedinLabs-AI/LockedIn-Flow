@@ -29,14 +29,14 @@ Engineering evidence: [AI-assisted SDLC](docs/secure-development.md) ·
 [Third-party risk](docs/third-party-risk.md) · [Validation](docs/validation.md).
 
 <p align="center">
-  <a href="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/security.yml"><img alt="Security checks" src="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/security.yml/badge.svg"></a>
+  <a href="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/security.yml"><img alt="Security checks" src="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/security.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="https://support.apple.com/macos"><img alt="macOS 15 or newer" src="https://img.shields.io/badge/macOS-15%2B-0b0c0f.svg"></a>
 </p>
 
 <p align="center">
-  <img src="docs/images/lockedin-flow-home-v2.png" width="780" alt="LockedIn Flow Community home window with the Control-Shift-Space shortcut, on-device processing path, and synthetic recent dictations">
+  <img src="docs/images/lockedin-flow-home-v2.png" width="780" alt="LockedIn Flow home window with the Control-Shift-Space shortcut, on-device processing path, and synthetic recent dictations">
 </p>
 
 <p align="center">
@@ -71,7 +71,7 @@ flowchart LR
   end
 ```
 
-The Community edition is MIT-licensed and free for individual, educational,
+LockedIn Flow is MIT-licensed and free for individual, educational,
 and commercial use. No license key, subscription, or per-seat fee is required.
 Third-party dependencies and model artifacts retain their own license terms;
 see [Dependency and model licenses](docs/model-licenses.md).
@@ -80,7 +80,7 @@ see [Dependency and model licenses](docs/model-licenses.md).
 
 | Path | Intended use | Delivery | Status |
 | --- | --- | --- | --- |
-| Community download | Individual macOS use | Free signed and notarized download | Pending the release gates above |
+| LockedIn Flow download | Individual macOS use | Free signed and notarized download | Pending the release gates above |
 | Source evaluation | Engineers reviewing or testing the current candidate | Clone, `npm ci --ignore-scripts --no-audit --no-fund`, `npm run doctor`, `npm run setup:local` | Available from source |
 | Managed enterprise pilot | Controlled deployment on managed Macs | Signed PKG through mobile device management, pre-staged verified models, policy controls, and measured acceptance | Target delivery after release validation |
 
@@ -172,14 +172,14 @@ is not used by the installed app. The reproducible source-evaluation path is pin
 those exact versions before setup changes the machine.
 
 ```bash
-git clone https://github.com/LockedinLabs-AI/lockedin-flow-community.git
-cd lockedin-flow-community
+git clone https://github.com/LockedinLabs-AI/lockedin-flow.git
+cd lockedin-flow
 npm ci --ignore-scripts --no-audit --no-fund
 npm run doctor
 npm run setup:local
 ```
 
-`setup:local` explicitly builds and installs the ad-hoc-signed Community app in
+`setup:local` explicitly builds and installs the ad-hoc-signed LockedIn Flow app in
 `~/Applications`, then retrieves and verifies the default pinned model set. It
 does not hide model acquisition inside `npm install`. Existing applications are
 never overwritten unless the user passes `--replace`; the previous bundle is
@@ -208,7 +208,7 @@ installation shape without presenting it as a production artifact:
 npm run package:pkg
 ```
 
-The Community bundle is ad-hoc signed for local evaluation and uses its own
+The LockedIn Flow bundle is ad-hoc signed for local evaluation and uses its own
 bundle identifier, preferences domain, Application Support directory, and
 Keychain service. It contains no updater and can be evaluated without touching a
 separately installed build. An official downloadable artifact will be Developer ID signed,
@@ -222,7 +222,7 @@ See [Enterprise adoption](docs/enterprise-adoption.md) and
 
 ## Current status
 
-The initial Community release candidate is based on v0.4.17/build 19 source. It
+The initial LockedIn Flow release candidate is based on v0.4.17/build 19 source. It
 includes a focused-target stability change for renderer-driven editors such as
 Codex and Claude: delivery uses bounded coherent observations of the current
 focused editor instead of synchronously scanning an entire changing
@@ -232,7 +232,7 @@ recording. The destination application is frozen when recording ends, and the
 current non-secure text field is resolved only at delivery. Secure fields,
 application changes during processing, and unresolved target churn fail closed.
 
-No official Community binary is published from this repository yet. The first
+No official LockedIn Flow binary is published from this repository yet. The first
 artifact remains withheld until the v0.4.17 source passes repeated installed
 record-to-exactly-once acceptance. Source readiness is not presented as
 installed-product acceptance. See [CHANGELOG.md](CHANGELOG.md) and

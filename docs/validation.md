@@ -1,6 +1,6 @@
 # Validation evidence
 
-This page records what the current Community candidate has actually passed and
+This page records what the current LockedIn Flow candidate has actually passed and
 keeps source validation separate from installed-product acceptance.
 
 ## Current review candidate

@@ -84,7 +84,7 @@ struct MenuBarView: View {
                     Circle()
                         .fill(FlowBrand.success)
                         .frame(width: 6, height: 6)
-                    Text("Community")
+                    Text("MIT")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(FlowBrand.secondaryText)
                 }
@@ -472,7 +472,7 @@ struct MenuBarView: View {
         let pasteboard = NSPasteboard.general
         pasteboard.prepareForNewContents(with: .currentHostOnly)
         pasteboard.setString(
-            "https://github.com/LockedinLabs-AI/lockedin-flow-community",
+            "https://github.com/LockedinLabs-AI/lockedin-flow",
             forType: .string
         )
         state.statusMessage = "Project link copied"

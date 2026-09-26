@@ -10,14 +10,14 @@
     import VoiceCore
 
     /// Headless verification modes, invoked as:
-    ///   lockedin-flow-community --selftest-stt <audio.wav>   → transcribe a file, print transcript, exit
-    ///   lockedin-flow-community --selftest-stt-soak <audio.wav> <runs> → reuse one model process, exit
-    ///   lockedin-flow-community --selftest-stt-unified <audio.wav> → test the English model, exit
-    ///   lockedin-flow-community --selftest-vad <audio.wav>   → detect speech bounds, print metadata, exit
-    ///   lockedin-flow-community --selftest-live-capture <seconds> [voice-focus] → capture real mic, transcribe, exit
-    ///   lockedin-flow-community --selftest-capture-preflight [runs] → repeatedly verify the focused field without recording or writing
-    ///   lockedin-flow-community --insert-text "text" [--insert-diagnostics] [--insert-from-home] → insert into the current frontmost app, exit
-    ///   lockedin-flow-community --render-marketing-preview <directory> → render sanitized production UI, exit
+    ///   lockedin-flow --selftest-stt <audio.wav>   → transcribe a file, print transcript, exit
+    ///   lockedin-flow --selftest-stt-soak <audio.wav> <runs> → reuse one model process, exit
+    ///   lockedin-flow --selftest-stt-unified <audio.wav> → test the English model, exit
+    ///   lockedin-flow --selftest-vad <audio.wav>   → detect speech bounds, print metadata, exit
+    ///   lockedin-flow --selftest-live-capture <seconds> [voice-focus] → capture real mic, transcribe, exit
+    ///   lockedin-flow --selftest-capture-preflight [runs] → repeatedly verify the focused field without recording or writing
+    ///   lockedin-flow --insert-text "text" [--insert-diagnostics] [--insert-from-home] → insert into the current frontmost app, exit
+    ///   lockedin-flow --render-marketing-preview <directory> → render sanitized production UI, exit
     /// These let CI scripts and developers verify STT and insertion without a microphone.
     enum SelfTest {
         static func runIfRequested() {

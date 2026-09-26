@@ -1,7 +1,7 @@
 # Get started
 
-LockedIn Flow turns speech into editable text on your Mac. The Community edition
-is free under the MIT License, including commercial and enterprise use.
+LockedIn Flow turns speech into editable text on your Mac. It is free under the
+MIT License, including commercial and enterprise use.
 
 ## Choose an installation
 
@@ -23,14 +23,14 @@ Apple Swift 6.3.3, and the macOS 26.5 SDK. Xcode is needed to build from source;
 Node is not used by the installed application.
 
 ```bash
-git clone https://github.com/LockedinLabs-AI/lockedin-flow-community.git
-cd lockedin-flow-community
+git clone https://github.com/LockedinLabs-AI/lockedin-flow.git
+cd lockedin-flow
 npm ci --ignore-scripts --no-audit --no-fund
 npm run doctor
 npm run setup:local -- --launch
 ```
 
-The final command explicitly builds and installs the Community app in your user
+The final command explicitly builds and installs the LockedIn Flow app in your user
 Applications folder, provisions the verified models, and opens the app. Setup
 uses the internet to obtain source dependencies and models. Once provisioned,
 core dictation works locally. Enterprise administrators can distribute the
@@ -43,7 +43,7 @@ Flow installations.
 
 ## Your first dictation
 
-1. Open LockedIn Flow Community. Allow microphone access and follow the
+1. Open LockedIn Flow. Allow microphone access and follow the
    Accessibility permission instructions in System Settings.
 2. Confirm the provisioned speech model is ready.
 3. Open Notes or another supported editor and click an ordinary text field.
@@ -64,7 +64,7 @@ Voice Focus is optional; standard microphone capture is the default.
 | Model unavailable | Run `npm run provision:models`. To replace a failed verification, explicitly add `-- --repair`. |
 | Microphone has no signal | Check the input in macOS Sound settings and microphone permission. Test with other recording apps stopped. |
 | Text could not be inserted | Click the intended field and use local recovery when offered. Password fields and security-unverifiable destinations are deliberately refused. |
-| Existing Community app | Quit it, then use `npm run setup:local -- --replace`. The previous bundle is kept as a timestamped backup. |
+| Existing LockedIn Flow app | Quit it, then use `npm run setup:local -- --replace`. The previous bundle is kept as a timestamped backup. |
 | Another app receives the shortcut | Assign a distinct shortcut in Settings. |
 
 History and recovery are session-only by default. Optional persistent history is
