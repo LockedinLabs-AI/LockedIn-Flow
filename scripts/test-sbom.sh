@@ -21,11 +21,12 @@ COMMON_ARGS=(
     --source-revision "$SOURCE_REVISION"
     --source-state clean
 )
+FIXED_ID="urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79"
 
-"$ROOT/scripts/generate-sbom.sh" "${COMMON_ARGS[@]}" --output "$WORK/first.cdx.json" > /dev/null
-"$ROOT/scripts/generate-sbom.sh" "${COMMON_ARGS[@]}" --output "$WORK/second.cdx.json" > /dev/null
+"$ROOT/scripts/generate-sbom.sh" "${COMMON_ARGS[@]}" --serial-number "$FIXED_ID" --output "$WORK/first.cdx.json" > /dev/null
+"$ROOT/scripts/generate-sbom.sh" "${COMMON_ARGS[@]}" --serial-number "$FIXED_ID" --output "$WORK/second.cdx.json" > /dev/null
 cmp -s "$WORK/first.cdx.json" "$WORK/second.cdx.json" \
-    || fail "identical evidence did not produce byte-identical output"
+    || fail "identical evidence and serial number did not produce byte-identical output"
 cmp -s "$EXPECTED" "$WORK/first.cdx.json" \
     || fail "generated fixture differs from reviewed expected SBOM"
 "$ROOT/scripts/validate-sbom.sh" "$WORK/first.cdx.json" > /dev/null
@@ -64,4 +65,29 @@ if grep -Fq "$WORK" "$WORK/unknown.stderr"; then
     fail "generator error exposed a local test path"
 fi
 
-echo "5 SBOM generation and validation tests passed."
+# GitHub's pinned attestation action requires serialNumber to identify a
+# CycloneDX document. Validate this contract before artifacts leave the build job.
+"$ROOT/scripts/generate-sbom.sh" "${COMMON_ARGS[@]}" --output "$WORK/fresh-one.cdx.json" > /dev/null
+"$ROOT/scripts/generate-sbom.sh" "${COMMON_ARGS[@]}" --output "$WORK/fresh-two.cdx.json" > /dev/null
+"$ROOT/scripts/validate-sbom.sh" "$WORK/fresh-one.cdx.json" > /dev/null
+"$ROOT/scripts/validate-sbom.sh" "$WORK/fresh-two.cdx.json" > /dev/null
+test "$(jq -r '.serialNumber' "$WORK/fresh-one.cdx.json")" != "$(jq -r '.serialNumber' "$WORK/fresh-two.cdx.json")" \
+    || fail "new documents reused a serial number"
+
+for mutation in \
+    'del(.serialNumber)' \
+    '.serialNumber = ""' \
+    '.serialNumber = "not-a-uuid"' \
+    '.serialNumber = "urn:uuid:3e671687-395b-41f5-c30f-a58921a69b79"' \
+    '.serialNumber = "urn:uuid:3e671687-395b-01f5-a30f-a58921a69b79"'; do
+    jq "$mutation" "$EXPECTED" > "$WORK/invalid.cdx.json"
+    if "$ROOT/scripts/validate-sbom.sh" "$WORK/invalid.cdx.json" > /dev/null 2>&1; then
+        fail "validator accepted a missing or malformed document identity"
+    fi
+done
+if "$ROOT/scripts/generate-sbom.sh" "${COMMON_ARGS[@]}" \
+    --serial-number invalid --output "$WORK/rejected.cdx.json" > /dev/null 2>&1; then
+    fail "generator accepted a malformed explicit document identity"
+fi
+
+echo "12 SBOM generation and validation tests passed."

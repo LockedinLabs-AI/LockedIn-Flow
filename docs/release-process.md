@@ -56,6 +56,13 @@ artifact needs its own provenance record or attestation; the evaluation
 attestations must not be presented as covering a separately produced release
 artifact.
 
+Every generated SBOM has a fresh RFC 4122 UUID serial number, as recommended by
+CycloneDX 1.6 and required by the pinned GitHub attestation action. The local
+validator rejects missing or malformed identities before artifact upload. For
+byte-identical reproduction of an existing SBOM, pass its recorded identity to
+`scripts/generate-sbom.sh --serial-number <urn:uuid:...>` together with the same
+source and inventory inputs; new builds should use the default fresh identity.
+
 ## Installed acceptance gate
 
 Before promoting a dictation release, test repeated record-to-exactly-once

@@ -4,6 +4,7 @@ def require($condition; $message):
 . as $bom
 | require(.bomFormat == "CycloneDX"; "bomFormat must be CycloneDX")
 | require(.specVersion == "1.6"; "specVersion must be 1.6")
+| require((.serialNumber // "") | (type == "string" and test("^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")); "RFC 4122 serialNumber is required for attestation")
 | require(.version == 1; "SBOM version must be 1")
 | require(."$schema" == "https://cyclonedx.org/schema/bom-1.6.schema.json"; "official schema URL missing")
 | require((.metadata.component.type == "application") and (.metadata.component.name | length > 0); "application metadata missing")

@@ -40,7 +40,7 @@ jobs:
           npm run check:public -- --history
           git diff --exit-code -- package-lock.json
       - name: Swift format lint
-        run: xcrun swift-format lint --strict --recursive Sources Tests Package.swift
+        run: xcrun swift-format lint --strict --recursive Sources Tests Package.swift scripts/generate-sbom.swift
       - name: Debug build and type check
         run: swift build --force-resolved-versions
       - name: Release build

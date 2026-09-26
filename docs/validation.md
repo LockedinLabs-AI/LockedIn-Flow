@@ -17,7 +17,7 @@ against each tested revision. A later commit must run the relevant checks again.
 | Formatting | Strict `swift-format` lint passed |
 | Builds | Debug and release builds passed with the pinned toolchain |
 | Binary diagnostic | Production-binary diagnostic passed |
-| SBOM | 5 generation and validation tests passed |
+| SBOM | 12 generation and validation tests passed, including document identity required by attestation |
 | Binary policy | 41 checks passed |
 | Runtime network source policy | Passed |
 | Dependency advisories | OSV returned no matching advisories for the exact FluidAudio and vendored KeyboardShortcuts revisions on 26 September 2026; see the limited coverage in [Third-party risk](third-party-risk.md) |
