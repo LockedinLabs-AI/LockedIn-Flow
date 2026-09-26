@@ -13,7 +13,7 @@ against each tested revision. A later commit must run the relevant checks again.
 | Gate | Result |
 | --- | --- |
 | Swift tests | 538 passed, 0 failed, including content-free logging regressions |
-| npm tooling tests | 41 passed, including provisioning, macOS ACL cases, history privacy, clipboard and logging policies, and advisory-service failures |
+| npm tooling tests | 46 passed, including provisioning, macOS ACL cases, history privacy, clipboard and logging policies, advisory-service failures, and analysis-result gating |
 | Formatting | Strict `swift-format` lint passed |
 | Builds | Debug and release builds passed with the pinned toolchain |
 | Binary diagnostic | Production-binary diagnostic passed |
