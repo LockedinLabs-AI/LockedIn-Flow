@@ -13,6 +13,12 @@ tests remain part of release acceptance. Operating-system services, WebView2 or
 WebKit, crash reporting, clipboard managers, and the destination app are separate
 components and must be covered by enterprise endpoint policy.
 
+The native build explicitly disables Whisper's curl, FFmpeg and example-server
+features, ggml RPC, and dynamic backend loading. Cargo forces these values so
+ordinary shell settings from another local-model project cannot enable them.
+This is a build safeguard, not protection against someone modifying the source
+or distributing a different executable.
+
 Recordings, transcripts, and session vocabulary are not intentionally persisted
 by the application. Owned sensitive buffers are cleared on drop where supported.
 This is not a guarantee of forensic erasure: the native inference library,

@@ -1,5 +1,11 @@
 # Reproducible CPU baseline. Do not specialize distributed binaries for the CI host.
 [env]
+# Never inherit network-capable native backends or runtime loading from a developer shell.
+WHISPER_CURL = { value = "OFF", force = true }
+WHISPER_FFMPEG = { value = "OFF", force = true }
+WHISPER_BUILD_SERVER = { value = "OFF", force = true }
+GGML_RPC = { value = "OFF", force = true }
+GGML_BACKEND_DL = { value = "OFF", force = true }
 GGML_NATIVE = { value = "OFF", force = true }
 GGML_SSE42 = { value = "OFF", force = true }
 GGML_BMI2 = { value = "OFF", force = true }

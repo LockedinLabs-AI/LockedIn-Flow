@@ -114,6 +114,11 @@ test("build tools have no automatic install hooks", () => {
   assert.equal(pkg.devDependencies["@tauri-apps/cli"], "2.12.0");
   const cpu = read(".cargo/config.toml");
   for (const flag of [
+    "WHISPER_CURL",
+    "WHISPER_FFMPEG",
+    "WHISPER_BUILD_SERVER",
+    "GGML_RPC",
+    "GGML_BACKEND_DL",
     "GGML_NATIVE",
     "GGML_SSE42",
     "GGML_BMI2",
