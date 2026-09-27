@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "node:os";
+import { linkerPrivacyFlags } from "./build-path-privacy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "node_modules", "@tauri-apps", "cli", "tauri.js");
@@ -22,6 +23,7 @@ const rustFlags =
   [];
 env.CARGO_ENCODED_RUSTFLAGS = [
   ...rustFlags,
+  ...linkerPrivacyFlags(process.platform),
   ...mappings.map(([from, to]) => `--remap-path-prefix=${from}=${to}`),
 ].join("\u001f");
 const nativeFlags = mappings

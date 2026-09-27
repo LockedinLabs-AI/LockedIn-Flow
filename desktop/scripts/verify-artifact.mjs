@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { rustHost } from "./build-platform.mjs";
 import { nativeReferences } from "./native-inventory.mjs";
+import { privatePathFindings } from "./build-path-privacy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -76,14 +77,13 @@ for (const ref of Object.values(nativeReferences)) {
 const binary = await read(
   `target/release/lockedin-flow-desktop${process.platform === "win32" ? ".exe" : ""}`,
 );
-for (const prefix of [os.homedir() + path.sep, path.dirname(root) + path.sep]) {
-  for (const form of [prefix, prefix.replaceAll("\\", "/")]) {
-    if (
-      binary.includes(Buffer.from(form)) ||
-      binary.includes(Buffer.from(form, "utf16le"))
-    )
-      throw new Error("Artifact contains a private build path.");
-  }
+const findings = privatePathFindings(binary, [
+  { scope: "home", prefix: os.homedir() + path.sep },
+  { scope: "checkout", prefix: path.dirname(root) + path.sep },
+]);
+if (findings.length) {
+  process.stderr.write(`Private build-path classifications (contents withheld): ${JSON.stringify(findings)}\n`);
+  throw new Error("Artifact contains a private build path.");
 }
 if (binary.length < 1024) throw new Error("Application binary is incomplete.");
 process.stdout.write(

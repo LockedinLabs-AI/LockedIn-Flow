@@ -19,6 +19,12 @@ ordinary shell settings from another local-model project cannot enable them.
 This is a build safeguard, not protection against someone modifying the source
 or distributing a different executable.
 
+Release compilation remaps private build paths. Windows also sets the
+[linker's alternate symbol path](https://learn.microsoft.com/en-us/cpp/build/reference/pdbaltpath-use-alternate-pdb-path)
+to a filename without a host directory. Artifact checks still fail on any
+detected home or checkout path; diagnostics report only the class of finding,
+never the path or surrounding binary contents.
+
 Recordings, transcripts, and session vocabulary are not intentionally persisted
 by the application. Owned sensitive buffers are cleared on drop where supported.
 This is not a guarantee of forensic erasure: the native inference library,
