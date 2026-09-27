@@ -119,6 +119,15 @@ access denied, and packages the app with its model, license notices, and
 CycloneDX build inventory. A successful CI run is not physical-microphone or
 supported-desktop acceptance.
 
+For pull-request builds, record both the proposed head commit and the actual
+checkout commit: CI normally tests GitHub's temporary merge with the base branch.
+The embedded inventory and Windows input sidecar identify that actual checkout.
+The current workflow retains packages and compliance files only for protected-main,
+non-pull-request runs. A successful pull-request build log is therefore not a
+retrievable package, checksum record, or completed payload/license reconciliation.
+Release evidence must bind the retained package bytes and their inventories to
+the source actually built.
+
 Installer CI also performs silent NSIS/MSI and DEB installation/removal on
 ephemeral native runners. It checks installed model and notice digests, Windows
 executable branding, and actual payload removal. These destructive test scripts

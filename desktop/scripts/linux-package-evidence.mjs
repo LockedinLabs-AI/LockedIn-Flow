@@ -1,0 +1,210 @@
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { constants } from "node:fs";
+import { open } from "node:fs/promises";
+
+export const limits = Object.freeze({ package: 512 * 1024 ** 2, payload: 768 * 1024 ** 2, file: 256 * 1024 ** 2, entries: 10000, metadata: 1024 * 1024 });
+export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const fail = () => { throw new Error("Package evidence rejected; input details withheld."); };
+const names = new Set(["lockedin-flow", "locked-in-flow", "lockedin-flow-desktop", "locked-in-flow-desktop"]);
+const required = ["SBOM.cdx.json", "THIRD-PARTY-NOTICES.txt", "LICENSE.txt", "MODEL.json"];
+
+export async function boundedFile(file, maximum) {
+  const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size < 1 || stat.size > maximum) fail();
+    const bytes = Buffer.alloc(stat.size + 1);
+    let used = 0;
+    while (used < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, used, bytes.length - used, used);
+      if (!bytesRead) break;
+      used += bytesRead;
+    }
+    const after = await handle.stat();
+    if (used !== stat.size || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs) fail();
+    return bytes.subarray(0, used);
+  } finally { await handle.close(); }
+}
+
+export function verifyBuildIdentity(sbom, revision, cargoHash, npmHash) {
+  if (!/^[a-f0-9]{40}$/.test(revision) || ![cargoHash, npmHash].every((hash) => /^[a-f0-9]{64}$/.test(hash))
+      || sbom?.bomFormat !== "CycloneDX" || sbom.specVersion !== "1.6" || !Array.isArray(sbom.metadata?.properties)) fail();
+  const properties = new Map(sbom.metadata.properties.map(({ name, value }) => [name, value]));
+  if (properties.size !== sbom.metadata.properties.length) fail();
+  for (const [key, value] of Object.entries({
+    "lockedin:source-revision": revision,
+    "lockedin:source-state": "clean",
+    "lockedin:target": "x86_64-unknown-linux-gnu",
+    "lockedin:cargo-lock-sha256": cargoHash,
+    "lockedin:npm-lock-sha256": npmHash,
+  })) if (properties.get(key) !== value) fail();
+}
+
+function archivePath(value, directory = false) {
+  if (value.startsWith("./")) value = value.slice(2);
+  if (directory && value.endsWith("/")) value = value.slice(0, -1);
+  if (directory && (value === "" || value === ".")) return "";
+  if (value.length > 256 || !/^[A-Za-z0-9_+.,@() /-]+$/.test(value)
+      || value.split("/").some((part) => !part || part === "." || part === "..")) fail();
+  return value;
+}
+
+function field(header, offset, size) {
+  const bytes = header.subarray(offset, offset + size);
+  const end = bytes.indexOf(0);
+  if (end !== -1 && bytes.subarray(end).some((byte) => byte !== 0)) fail();
+  if (bytes.subarray(0, end === -1 ? size : end).some((byte) => byte < 32 || byte > 126)) fail();
+  return bytes.subarray(0, end === -1 ? size : end).toString("ascii");
+}
+
+function octal(bytes) {
+  const value = bytes.toString("ascii").replace(/[\0 ]+$/, "").replace(/^ +/, "");
+  if (!/^[0-7]+$/.test(value) || bytes.some((byte) => byte > 127)) fail();
+  const number = Number.parseInt(value, 8);
+  if (!Number.isSafeInteger(number)) fail();
+  return number;
+}
+
+// Original USTAR or the pinned producer's ordinary GNU headers only. No
+// normalization, extraction, GNU/PAX extensions, links, devices or sparse entries.
+export function inspectTar(bytes, expected) {
+  if (!Buffer.isBuffer(bytes) || bytes.length > limits.payload || bytes.length % 512) fail();
+  const entries = new Map();
+  let cursor = 0;
+  let ended = false;
+  while (cursor + 512 <= bytes.length) {
+    const header = bytes.subarray(cursor, cursor + 512);
+    cursor += 512;
+    if (header.every((byte) => byte === 0)) {
+      if (bytes.length - cursor < 512 || bytes.subarray(cursor).some((byte) => byte !== 0)) fail();
+      ended = true;
+      break;
+    }
+    const signature = header.subarray(257, 265);
+    const gnu = signature.equals(Buffer.from("ustar  \0"));
+    if (entries.size >= limits.entries || (!gnu && !signature.equals(Buffer.from("ustar\0" + "00")))) fail();
+    if (gnu) {
+      // tar 0.4.46 new_gnu + deterministic Unix metadata: GNU offsets 345..511
+      // are NOT a USTAR prefix. Require its unused time/offset/sparse area empty.
+      // Long-name/link extension entries are still rejected by the type guard.
+      if (header.subarray(157, 257).some((byte) => byte !== 0)
+          || header.subarray(265, 329).some((byte) => byte !== 0)
+          || header.subarray(345).some((byte) => byte !== 0)
+          || [108, 116, 329, 337].some((offset) => octal(header.subarray(offset, offset + 8)) !== 0)) fail();
+      octal(header.subarray(136, 148));
+    }
+    const checksum = header.reduce((sum, byte, index) => sum + (index >= 148 && index < 156 ? 32 : byte), 0);
+    if (checksum !== octal(header.subarray(148, 156))) fail();
+    const type = header[156] === 0 ? "0" : String.fromCharCode(header[156]);
+    if (!["0", "2", "5"].includes(type)) fail();
+    const prefix = gnu ? "" : field(header, 345, 155);
+    const name = archivePath((prefix ? prefix + "/" : "") + field(header, 0, 100), type === "5");
+    const size = octal(header.subarray(124, 136));
+    const mode = octal(header.subarray(100, 108));
+    // Deterministic mode contains permission bits only, not Unix file-type bits.
+    if (gnu && (type === "5" ? mode !== 0o755 : ![0o644, 0o755].includes(mode))) fail();
+    if (size > limits.file || (type !== "0" && size !== 0) || (mode & ~0o777) || cursor + Math.ceil(size / 512) * 512 > bytes.length) fail();
+    if (entries.has(name)) fail();
+    const data = bytes.subarray(cursor, cursor + size);
+    if (bytes.subarray(cursor + size, cursor + Math.ceil(size / 512) * 512).some((byte) => byte !== 0)) fail();
+    cursor += Math.ceil(size / 512) * 512;
+    const entry = { pathSha256: digest(name), type: { "0": "file", "2": "symlink", "5": "directory" }[type], mode, bytes: size };
+    if (type === "2") {
+      // Conservative policy: reject all symlinks until a native, format-specific
+      // link-resolution contract is tested. Never dereference an archive link.
+      fail();
+    }
+    if (type === "0") {
+      entry.sha256 = digest(data);
+      entry.elf = data.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]));
+      entry.componentMapping = "unresolved";
+    }
+    entries.set(name, entry);
+  }
+  if (!ended) fail();
+  for (const name of entries.keys()) {
+    const segments = name.split("/");
+    while (segments.length > 1) {
+      segments.pop();
+      const parent = entries.get(segments.join("/"));
+      if (parent && parent.type !== "directory") fail();
+    }
+  }
+  const matches = (suffix) => [...entries].filter(([name, entry]) => entry.type === "file" && name.endsWith(suffix));
+  const models = matches("/models/ggml-base.en.bin");
+  if (models.length !== 1 || models[0][1].sha256 !== expected.model) fail();
+  const resourceRoot = models[0][0].slice(0, -"/models/ggml-base.en.bin".length);
+  for (const label of required) {
+    const found = matches("/compliance/" + label);
+    if (found.length !== 1 || found[0][0] !== resourceRoot + "/compliance/" + label
+        || found[0][1].sha256 !== expected[label]) fail();
+    found[0][1].verifiedResource = label;
+  }
+  models[0][1].verifiedResource = "pinned-model";
+  const app = entries.get("usr/bin/lockedin-flow-desktop");
+  if (!app?.elf || app.sha256 !== expected.application) fail();
+  app.verifiedResource = "application";
+  return [...entries.values()].sort((a, b) => a.pathSha256.localeCompare(b.pathSha256));
+}
+
+export function packageMetadata(format, identity, dependencies) {
+  if (!["deb", "rpm"].includes(format) || identity.length > limits.metadata || dependencies.length > limits.metadata) fail();
+  const rows = identity.trimEnd().split("\n");
+  if (rows.length !== 3 || !names.has(rows[0]) || !/^\d{1,5}\.\d{1,5}\.\d{1,5}(?:[~+-](?:alpha|beta|rc)\.\d{1,5})?(?:-\d{1,5})?$/.test(rows[1])
+      || rows[2] !== (format === "deb" ? "amd64" : "x86_64")) fail();
+  const requirements = dependencies.split("\n").filter(Boolean);
+  if (requirements.length > 4096 || requirements.some((line) => line.length > 4096 || /[^\x20-\x7e]/.test(line))) fail();
+  // Unreviewed package metadata is never echoed. Keep hashes for reconciliation;
+  // do not infer bundled component identities/licenses from requirement names.
+  return {
+    name: rows[0], declaredVersion: rows[1], architecture: rows[2],
+    declaredOsDependencies: { scope: "requirements-not-bundled-components", sha256: digest(dependencies), recordSha256: requirements.map(digest).sort() },
+  };
+}
+
+export function standardTool(command, args, input, maxBuffer = limits.metadata) {
+  const result = spawnSync(command, args, {
+    input, encoding: null, maxBuffer, timeout: 60000, killSignal: "SIGKILL",
+    stdio: [input ? "pipe" : "ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32",
+    env: { PATH: "/usr/bin:/bin", LANG: "C", LC_ALL: "C" },
+  });
+  if (result.error && result.pid > 0 && process.platform !== "win32") {
+    // Also stop decompressor children in this tool's newly owned process group.
+    try { process.kill(-result.pid, "SIGKILL"); } catch { /* Already exited. */ }
+  }
+  if (result.error || result.status !== 0 || result.signal) fail();
+  return result.stdout;
+}
+
+export function inspectPackage(format, snapshot, bytes, expected, run = standardTool) {
+  if (!["deb", "rpm", "appimage"].includes(format) || bytes.length < 64 || bytes.length > limits.package) fail();
+  const result = { format, bytes: bytes.length, sha256: digest(bytes), status: "unverified", licenseReview: "unresolved" };
+  if (format === "appimage") {
+    // Never invoke --appimage-extract: that runs the supplied ELF. A reviewed
+    // SquashFS-offset reader is not yet present; absence must remain explicit.
+    if (!bytes.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70])) || !bytes.subarray(8, 11).equals(Buffer.from([65, 73, 2]))) fail();
+    return { ...result, reason: "appimage-payload-reader-not-implemented", metadata: null, files: null };
+  }
+  if (format === "deb" ? bytes.subarray(0, 8).toString("ascii") !== "!<arch>\n" : !bytes.subarray(0, 4).equals(Buffer.from([237, 171, 238, 219]))) fail();
+  try {
+    let identity, dependencies, tar;
+    if (format === "deb") {
+      identity = ["Package", "Version", "Architecture"].map((field) => run("/usr/bin/dpkg-deb", ["--field", snapshot, field]).toString("utf8").trimEnd()).join("\n");
+      dependencies = ["Depends", "Pre-Depends"].map((field) => run("/usr/bin/dpkg-deb", ["--field", snapshot, field]).toString("utf8").trimEnd()).join("\n");
+      // Validate every original decompressed byte. A rewriting tool can silently
+      // discard trailing archives/data and cannot establish full consumption.
+      tar = run("/usr/bin/dpkg-deb", ["--fsys-tarfile", snapshot], undefined, limits.payload);
+    } else {
+      identity = run("/usr/bin/rpm", ["--noplugins", "-qp", "--queryformat", "%{NAME}\n%{VERSION}-%{RELEASE}\n%{ARCH}\n", snapshot]).toString("utf8");
+      dependencies = run("/usr/bin/rpm", ["--noplugins", "-qp", "--requires", snapshot]).toString("utf8");
+      // Metadata queries do not prove the original RPM/CPIO payload was fully
+      // consumed. Keep it unverified until an original-format reader is reviewed.
+      return { ...result, reason: "rpm-original-payload-validation-unavailable", metadata: packageMetadata(format, identity, dependencies), files: null };
+    }
+    return { ...result, status: "payload-inspected", metadata: packageMetadata(format, identity, dependencies), files: inspectTar(tar, expected) };
+  } catch {
+    return { ...result, reason: "tool-or-payload-validation-failed", metadata: null, files: null };
+  }
+}

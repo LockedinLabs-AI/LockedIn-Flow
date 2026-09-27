@@ -36,6 +36,14 @@ test("Windows installation does not download WebView2 on the endpoint", () => {
   assert.ok(config.bundle.resources["resources/models/ggml-base.en.bin"]);
 });
 
+test("generated notices distinguish build inventory from redistributed platform payloads", () => {
+  const generator = read("scripts/generate-inventory.mjs");
+  assert.ok(generator.includes("not an extracted installer inventory or complete redistribution-notice review"));
+  assert.ok(generator.includes("Windows offline WebView2 installer is a redistributed input, distinct from the installed shared Evergreen runtime"));
+  assert.ok(generator.includes("AppImage can bundle native libraries and webview helpers"));
+  assert.doesNotMatch(generator, /System libraries and the operating-system webview are administered separately/);
+});
+
 test("the native bridge has only three window-scoped commands", () => {
   const capability = JSON.parse(read("app/capabilities/dictation.json"));
   assert.deepEqual(capability.windows, ["main"]);

@@ -40,7 +40,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev libssl-dev librsvg2-dev libxdo-dev libfuse2 libxkbcommon-dev build-essential clang cmake ninja-build pkg-config patchelf rpm espeak sox
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev libssl-dev librsvg2-dev libxdo-dev libfuse2 libxkbcommon-dev build-essential clang cmake ninja-build pkg-config patchelf dpkg rpm espeak sox
       - name: Verify pinned toolchain
         run: |
           rustup toolchain install 1.94.1 --profile minimal --component rustfmt --component clippy
@@ -119,6 +119,24 @@ jobs:
         run: npm run build -- --ci --bundles deb,rpm,appimage
       - name: Verify native artifact provenance and build-path privacy
         run: node scripts/verify-artifact.mjs
+      - name: Collect Linux inspection evidence (not acceptance)
+        id: linux_evidence
+        if: runner.os == 'Linux'
+        run: |
+          printf 'started_at=%s\n' "$(date +%s)" >> "$GITHUB_OUTPUT"
+          inspector_exit=1
+          if [[ ! -e target/release/bundle/LINUX-PACKAGE-EVIDENCE.json && ! -L target/release/bundle/LINUX-PACKAGE-EVIDENCE.json && ! -e target/release/bundle/LINUX-PACKAGE-EVIDENCE.review.json && ! -L target/release/bundle/LINUX-PACKAGE-EVIDENCE.review.json ]]; then
+            if node scripts/verify-linux-packages.mjs; then
+              inspector_exit=0
+            else
+              inspector_exit=$?
+            fi
+          fi
+          case "$inspector_exit" in
+            0|2) ;;
+            *) inspector_exit=1 ;;
+          esac
+          printf 'exit_code=%s\n' "$inspector_exit" >> "$GITHUB_OUTPUT"
       - name: Verify Windows offline runtime input identity and signatures
         if: runner.os == 'Windows'
         run: node scripts/verify-windows-prerequisites.mjs
@@ -139,6 +157,41 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./scripts/test-windows-installers.ps1
+      - name: Validate fixed Linux report immediately before retention
+        id: linux_review_json
+        if: ${{ !cancelled() && runner.os == 'Linux' && (steps.linux_evidence.outputs.exit_code == '0' || steps.linux_evidence.outputs.exit_code == '2') }}
+        env:
+          FLOW_INSPECTOR_EXIT: ${{ steps.linux_evidence.outputs.exit_code }}
+          FLOW_INSPECTION_STARTED_AT: ${{ steps.linux_evidence.outputs.started_at }}
+          FLOW_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+        run: node scripts/validate-linux-evidence.mjs
+      - name: Retain sanitized Linux JSON only (not binaries or approval)
+        id: linux_review_upload
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.linux_review_json.outcome == 'success' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: LockedIn-Flow-linux-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: desktop/target/release/bundle/LINUX-PACKAGE-EVIDENCE.review.json
+          if-no-files-found: error
+          include-hidden-files: false
+          overwrite: false
+          retention-days: 7
+      - name: Enforce Linux payload acceptance after evidence retention
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.linux_evidence.outputs.exit_code != '' }}
+        env:
+          FLOW_INSPECTOR_EXIT: ${{ steps.linux_evidence.outputs.exit_code }}
+          FLOW_REVIEW_VALIDATION: ${{ steps.linux_review_json.outcome }}
+          FLOW_REVIEW_UPLOAD: ${{ steps.linux_review_upload.outcome }}
+        run: |
+          if [[ "$FLOW_INSPECTOR_EXIT" == 0 && "$FLOW_REVIEW_VALIDATION" == success && "$FLOW_REVIEW_UPLOAD" == success ]]; then
+            exit 0
+          fi
+          if [[ "$FLOW_INSPECTOR_EXIT" == 2 ]]; then
+            echo "::error::Linux payload inspection remains incomplete. Retaining a review report is not acceptance."
+          else
+            echo "::error::Linux evidence collection or validated retention failed. No acceptance is recorded."
+          fi
+          exit 1
       - name: Upload protected-main evaluation installers only
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

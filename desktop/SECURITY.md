@@ -113,6 +113,18 @@ Syntax validation is not license compatibility approval or notice closure.
 Release review must close missing notices and inventory native/system libraries
 and the bundled WebView2 installer separately.
 
+Distinguish declared system prerequisites from redistributed files. DEB/RPM
+dependency declarations do not enumerate their payloads. AppImage is different:
+the [pinned Tauri bundler](https://github.com/tauri-apps/tauri/blob/447fa9f3f993fe77724189e355078b38ce20baea/crates/tauri-bundler/src/bundle/linux/appimage/linuxdeploy.rs)
+copies AppRun, conditionally copies WebKit helpers from the build host, and runs
+the GTK deployment plugin even when media-framework bundling is disabled.
+Neither Cargo metadata nor a list of installed build prerequisites proves the
+final set of redistributed libraries or their notices. Inventory each exact
+package's extracted files, map bundled components to their source/version and
+applicable license material, and reconcile that material with the shipped notices.
+Include installer/runtime components as well as application files; do not label
+downloaded build tools as redistributed solely because they appear in a build log.
+
 Windows CI now checks the offline prerequisite **before executing either app
 installer**. It reads the exact WebView2 paths from the pinned bundler's generated
 NSIS/WiX sources, validates timestamped Microsoft Authenticode signatures,
@@ -129,6 +141,61 @@ terms, not this project's MIT license. Its redistribution terms and the actual
 installed runtime version remain part of release review. Reproduce the check on
 a fresh native Windows build with `node scripts/verify-windows-prerequisites.mjs`;
 it does not run the prerequisite or replace an existing evidence report.
+
+### Linux package evidence tooling
+
+After a reviewed native Linux build and the existing artifact verifier, run
+`node scripts/verify-linux-packages.mjs` from `desktop/`. The build host must
+already provide Node 22+, `dpkg-deb` and `rpm`.
+The checker does not install tools, fetch dependencies, run package scripts,
+install packages or execute their binaries. Native DEB payload and RPM metadata acceptance
+is still pending; synthetic tests alone do not establish that acceptance.
+
+It requires a clean checkout matching the staged Linux inventory and lockfile
+hashes. It reads private snapshots of the final archives and queries DEB/RPM metadata.
+For DEB, it validates the complete original decompressed tar stream returned by
+`dpkg-deb --fsys-tarfile` and hashes regular files without extracting them to disk.
+It never normalizes that stream: rewriting can silently discard a second archive
+or trailing data. Accepted headers are USTAR or the ordinary GNU shape emitted by
+the [pinned Tauri producer](https://github.com/tauri-apps/tauri/blob/447fa9f3f993fe77724189e355078b38ce20baea/crates/tauri-bundler/src/bundle/linux/debian.rs).
+Its locked tar 0.4.46 uses [GNU header layout and deterministic Unix metadata](https://github.com/composefs/tar-rs/blob/fc459c149f83bf4daceaa52e17d351989002e1a9/src/header.rs):
+zero owner/device numbers, empty owner names and GNU extension area, and 0644/0755
+permission modes (directories 0755), without file-type bits in the mode field.
+GNU time/offset/sparse fields are never interpreted as a USTAR path prefix.
+Long-name/link extensions, PAX, sparse records and other GNU metadata shapes
+remain unsupported/unverified. This is a narrow producer-shape contract, not
+general GNU-tar support; synthetic header tests do not establish native acceptance.
+The application, model and four compliance resources must match staged digests.
+Input/archive size, entry count, member size
+and tool runtime/output limits are enforced. Traversal, duplicate paths, special
+files, privilege bits, extensions and all links are rejected conservatively;
+even a legitimate symlink leaves inspection unverified until support is reviewed.
+
+`target/release/bundle/LINUX-PACKAGE-EVIDENCE.json` is created exclusively with
+private file permissions; existing reports are not overwritten. It binds archive
+hashes to the actual built-source revision. Archive paths and dependency strings
+are represented by SHA-256 identifiers rather than raw text. Only allowlisted
+product identities, bounded declared versions/architectures and fixed resource
+labels are displayed. Reconcile identifiers privately against the exact archive;
+do not publish raw file lists, dependency text or tool diagnostics by default.
+Requirements declared by a package are not evidence of bundled libraries.
+File hashes and ELF magic do not identify component versions or license terms;
+those mappings and notice obligations remain explicitly unresolved.
+
+RPM retains queried metadata and its archive hash but **no payload verification**:
+there is no reviewed original-format/full-consumption reader. A rewritten CPIO
+stream is not evidence that all original payload bytes were inspected.
+AppImage also receives a hash but **no payload verification**: there is no
+reviewed SquashFS reader. Never substitute `--appimage-extract`, which runs the
+supplied executable. Control scripts, signatures, installed-device behavior and
+Windows input/license closure are also outside this check. Exit 2 records partial
+evidence, not acceptance; exit 1 means no report was recorded. Exit 0 would mean
+payload inspection only, not license or release approval.
+
+This command does not change CI report retention. Before a native acceptance run,
+review a report-only retention step, validate its sanitized output, and preserve
+all existing binary-upload restrictions. Keep the report even when inspection
+is incomplete; never turn that result into a passing release gate.
 
 ## Coexistence and support
 

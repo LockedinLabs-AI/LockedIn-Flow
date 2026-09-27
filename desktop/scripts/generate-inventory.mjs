@@ -50,7 +50,9 @@ const checksums = new Map(
 const notices = [
   "# LockedIn Flow desktop dependency notices",
   "",
-  "This build inventory includes target and build dependencies, not a claim that every crate is linked at runtime. System libraries and the operating-system webview are administered separately. See desktop/SECURITY.md.",
+  "This build inventory covers Cargo target/build dependencies, verified nested speech sources, and the model; not every listed crate is linked at runtime.",
+  "It is not an extracted installer inventory or complete redistribution-notice review. Bundled platform components require separate payload and license reconciliation.",
+  "The Windows offline WebView2 installer is a redistributed input, distinct from the installed shared Evergreen runtime. AppImage can bundle native libraries and webview helpers; they are not all external system prerequisites. See desktop/SECURITY.md.",
   "",
 ];
 async function licenseFiles(directory, relative = "") {
