@@ -1,5 +1,8 @@
 # Reproducible CPU baseline. Do not specialize distributed binaries for the CI host.
 [env]
+# cc-rs forwards target-scoped flags to CMake for direct Cargo test/dev builds.
+# clang-cl requires this for the speech engine's C++ error-handling paths.
+CXXFLAGS_x86_64_pc_windows_msvc = "/EHsc"
 # Never inherit network-capable native backends or runtime loading from a developer shell.
 WHISPER_CURL = { value = "OFF", force = true }
 WHISPER_FFMPEG = { value = "OFF", force = true }

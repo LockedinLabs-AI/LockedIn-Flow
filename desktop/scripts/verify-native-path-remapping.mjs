@@ -4,7 +4,7 @@ import { mkdtemp, readFile, copyFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { nativePrivacyFlags, privatePathFindings } from "./build-path-privacy.mjs";
+import { nativeCxxFlags, nativePrivacyFlags, privatePathFindings } from "./build-path-privacy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // Deliberate spaces exercise the same mapping used in normal developer folders.
@@ -17,7 +17,7 @@ try {
   const compiler = windows ? "clang-cl" : "clang++";
   const common = nativePrivacyFlags([[temporary, "/lockedin-probe"]], process.platform);
   const args = windows
-    ? ["/nologo", "/WX", "/c", ...common, source, `/Fo${object}`]
+    ? ["/nologo", "/WX", "/c", ...nativeCxxFlags(process.platform), ...common, source, `/Fo${object}`]
     : ["-Werror", "-c", ...common, source, "-o", object];
   const result = spawnSync(compiler, args, { encoding: "utf8", shell: false });
   // Never reflect raw compiler errors, which may contain source-machine paths.
@@ -39,7 +39,7 @@ try {
   )];
   if (!widePrefixes.some((prefix) => binary.includes(prefix)))
     throw new Error("Native compiler did not retain the remapped wide fixture.");
-  process.stdout.write("Native narrow/wide source-path remapping probe passed.\n");
+  process.stdout.write("Native C++ exception and narrow/wide source-path remapping probe passed.\n");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

@@ -55,7 +55,11 @@ commands, not a claim that an end-user npm package has been published.
 
 Windows needs Microsoft C++ Build Tools and its Windows SDK, CMake, Ninja, and
 LLVM with `clang-cl` and libclang. The release wrapper selects clang-cl/Ninja
-for native speech code while retaining the MSVC ABI and Rust target. Ubuntu 22.04
+for native speech code while retaining the MSVC ABI and Rust target. Windows
+C++ exception handling (`/EHsc`) is explicit in the release wrapper and the
+target-scoped Cargo configuration, because the speech engine requires it.
+The early compiler probe checks both exception support and source-path remapping.
+Ubuntu 22.04
 needs the packages recorded in [.github/workflows/desktop.yml](../.github/workflows/desktop.yml).
 Start in the repository's `desktop` directory so Cargo reads the portable CPU
 configuration.

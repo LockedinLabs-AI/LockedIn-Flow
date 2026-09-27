@@ -20,6 +20,11 @@ export function nativePrivacyFlags(mappings, platform) {
     `${platform === "win32" ? "/clang:" : ""}-ffile-prefix-map=${from}=${to}`);
 }
 
+export function nativeCxxFlags(platform) {
+  // clang-cl does not enable C++ exceptions by default; ggml requires them.
+  return platform === "win32" ? ["/utf-8", "/EHsc"] : [];
+}
+
 export function nativeCompilerEnvironment(environment, mappings, platform) {
   const env = { ...environment };
   const flags = nativePrivacyFlags(mappings, platform).map((flag) => `"${flag}"`).join(" ");
@@ -30,7 +35,7 @@ export function nativeCompilerEnvironment(environment, mappings, platform) {
     env.CXX = "clang-cl";
     env.CMAKE_GENERATOR = "Ninja";
     env.CMAKE_C_FLAGS = [env.CMAKE_C_FLAGS, env.CFLAGS, flags].filter(Boolean).join(" ");
-    env.CMAKE_CXX_FLAGS = [env.CMAKE_CXX_FLAGS, env.CXXFLAGS, "/utf-8", flags].filter(Boolean).join(" ");
+    env.CMAKE_CXX_FLAGS = [env.CMAKE_CXX_FLAGS, env.CXXFLAGS, ...nativeCxxFlags(platform), flags].filter(Boolean).join(" ");
   } else {
     // Preserve the existing cc-rs flag layout on Unix; do not quote the option
     // name itself, because cc-rs' default parser passes those quotes literally.

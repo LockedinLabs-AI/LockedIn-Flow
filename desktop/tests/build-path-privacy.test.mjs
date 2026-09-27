@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { linkerPrivacyFlags, privatePathFindings, sourcePathMappings, nativePrivacyFlags, nativeCompilerEnvironment } from "../scripts/build-path-privacy.mjs";
+import { linkerPrivacyFlags, privatePathFindings, sourcePathMappings, nativePrivacyFlags, nativeCompilerEnvironment, nativeCxxFlags } from "../scripts/build-path-privacy.mjs";
 
 const prefix = "X:\\synthetic-checkout\\";
 const boundaries = [{ scope: "checkout", prefix }];
@@ -50,8 +51,20 @@ test("Windows mappings cover native and forward separators without splitting spa
   assert.equal(env.CXX, "clang-cl");
   assert.equal(env.CMAKE_GENERATOR, "Ninja");
   assert.ok(env.CMAKE_CXX_FLAGS.includes('"/clang:-ffile-prefix-map=X:/synthetic checkout=/lockedin-flow"'));
-  assert.match(env.CMAKE_CXX_FLAGS, /^\/DSYNTHETIC=1 \/utf-8 /);
+  assert.match(env.CMAKE_CXX_FLAGS, /^\/DSYNTHETIC=1 \/utf-8 \/EHsc /);
   assert.deepEqual(original, { CXXFLAGS: "/DSYNTHETIC=1" });
+});
+
+test("Windows C++ exceptions are enabled in release and direct Cargo builds only", () => {
+  assert.deepEqual(nativeCxxFlags("win32"), ["/utf-8", "/EHsc"]);
+  assert.deepEqual(nativeCxxFlags("linux"), []);
+  assert.deepEqual(nativeCxxFlags("darwin"), []);
+  const env = nativeCompilerEnvironment({}, [], "win32");
+  assert.equal(env.CMAKE_CXX_FLAGS, "/utf-8 /EHsc");
+  assert.equal(env.CMAKE_C_FLAGS, "");
+  const cargo = readFileSync(new URL("../.cargo/config.toml", import.meta.url), "utf8");
+  assert.match(cargo, /^CXXFLAGS_x86_64_pc_windows_msvc = "\/EHsc"$/m);
+  assert.doesNotMatch(cargo, /^CXXFLAGS\s*=/m);
 });
 
 test("Unix compiler selection is preserved and unsafe mapping syntax is rejected", () => {
