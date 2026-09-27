@@ -44,6 +44,14 @@ for name in SBOM.cdx.json THIRD-PARTY-NOTICES.txt LICENSE.txt MODEL.json; do
   cmp -- "app/resources/compliance/$name" "$resources/compliance/$name"
 done
 [[ -x /usr/bin/lockedin-flow-desktop ]]
+node --input-type=module <<'NODE'
+import { boundedFile, debApplicationDigest, digest, limits } from './scripts/linux-package-evidence.mjs';
+const reference = await boundedFile('target/release/lockedin-flow-desktop', limits.file);
+const installed = await boundedFile('/usr/bin/lockedin-flow-desktop', limits.file);
+if (digest(installed) !== debApplicationDigest(reference)) {
+  throw new Error('Installed application integrity check failed.');
+}
+NODE
 sudo dpkg --remove "$package_name"
 trap - EXIT
 [[ ! -e /usr/bin/lockedin-flow-desktop && ! -e "$model" ]]

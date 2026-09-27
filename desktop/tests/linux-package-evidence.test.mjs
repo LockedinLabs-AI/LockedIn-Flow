@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, symlink, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { digest, inspectTar, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
+import { digest, debApplicationDigest, inspectTar, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
 
 // Only synthetic, in-memory USTAR fixtures. No application or model is run.
 const resourceRoot = "usr/lib/lockedin-flow-desktop";
@@ -60,6 +60,34 @@ test("payload hashes bind the exact binary, model and four compliance resources"
   assert.ok(files.every((file) => file.componentMapping === "unresolved"));
   assert.ok(files.every((file) => /^[a-f0-9]{64}$/.test(file.pathSha256)));
   assert.doesNotMatch(JSON.stringify(files), /synthetic-native|synthetic-model|usr\//);
+});
+
+test("DEB reference follows pinned bundle patching without weakening full-file identity", () => {
+  const prefix = Buffer.from([127, 69, 76, 70]);
+  const source = Buffer.concat([prefix, Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK"), Buffer.from("synthetic-code")]);
+  const before = Buffer.from(source);
+  const packaged = Buffer.from(source);
+  Buffer.from("__TAURI_BUNDLE_TYPE_VAR_DEB").copy(packaged, prefix.length);
+  const reference = { ...expected, application: debApplicationDigest(source) };
+  const packageWith = (app) => tar([[payload[0][0], app], ...payload.slice(1)]);
+  assert.notEqual(reference.application, digest(source));
+  assert.equal(reference.application, digest(packaged));
+  assert.equal(inspectTar(packageWith(packaged), reference).filter((file) => file.verifiedResource).length, 6);
+  for (const kind of ["UNK", "RPM", "APP"]) {
+    const wrong = Buffer.from(packaged);
+    Buffer.from("__TAURI_BUNDLE_TYPE_VAR_" + kind).copy(wrong, prefix.length);
+    assert.throws(() => inspectTar(packageWith(wrong), reference), (error) => error.category === "resource-application-hash");
+  }
+  const corrupted = Buffer.from(packaged);
+  corrupted[corrupted.length - 1] ^= 1;
+  assert.throws(() => inspectTar(packageWith(corrupted), reference), (error) => error.category === "resource-application-hash");
+  assert.deepEqual(source, before);
+  const runtimeConstants = Buffer.from(["DEB", "RPM", "APP", "NSS", "MSI"].map((kind) => "__TAURI_BUNDLE_TYPE_VAR_" + kind).join("\0"));
+  assert.equal(debApplicationDigest(Buffer.concat([source, runtimeConstants])), digest(Buffer.concat([packaged, runtimeConstants])));
+  for (const invalid of [null, "text", Buffer.alloc(0), prefix,
+    Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK"), packaged,
+    Buffer.concat([source, Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK")]),
+  ]) assert.throws(() => debApplicationDigest(invalid));
 });
 
 test("bounded input reader rejects oversized files, empty files, directories, FIFOs and symlinks", { skip: process.platform === "win32" }, async () => {

@@ -5,6 +5,23 @@ import { open } from "node:fs/promises";
 
 export const limits = Object.freeze({ package: 512 * 1024 ** 2, payload: 768 * 1024 ** 2, file: 256 * 1024 ** 2, entries: 10000, metadata: 1024 * 1024 });
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
+// Tauri CLI 2.12.0 patches its first bundle token before copying the executable
+// into a package, then restores the build output. Derive the expected bytes
+// from that independent output; never normalize or trust the package payload.
+export function debApplicationDigest(reference) {
+  const token = Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK");
+  if (!Buffer.isBuffer(reference) || reference.length > limits.file
+      || !reference.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]))) throw new Error("Invalid application reference.");
+  const offset = reference.indexOf(token);
+  // Runtime dispatch also contains the other format strings; preserve them.
+  if (offset < 0 || reference.indexOf(token, offset + 1) !== -1) {
+    throw new Error("Ambiguous application reference.");
+  }
+  const packaged = Buffer.from(reference);
+  Buffer.from("__TAURI_BUNDLE_TYPE_VAR_DEB").copy(packaged, offset);
+  return digest(packaged);
+}
 class EvidenceFailure extends Error {
   constructor(category) {
     super("Package evidence rejected; input details withheld.");

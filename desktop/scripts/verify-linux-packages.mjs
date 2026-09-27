@@ -3,7 +3,7 @@ import { lstat, realpath, mkdtemp, readdir, writeFile, rm } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { digest, inspectPackage, limits, standardTool, verifyBuildIdentity, boundedFile } from "./linux-package-evidence.mjs";
+import { digest, debApplicationDigest, inspectPackage, limits, standardTool, verifyBuildIdentity, boundedFile } from "./linux-package-evidence.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resourceLimit = 16 * 1024 ** 2;
@@ -26,7 +26,9 @@ async function main() {
   const model = JSON.parse(await boundedFile(path.join(root, "models.json"), resourceLimit));
   if (model.file !== "ggml-base.en.bin" || !/^[a-f0-9]{64}$/.test(model.sha256)) throw new Error();
   expected.model = model.sha256;
-  expected.application = digest(await boundedFile(path.join(root, "target/release/lockedin-flow-desktop"), limits.file));
+  // Only DEB payload inspection currently consumes this reference. Other
+  // formats require their own producer transformation and remain unverified.
+  expected.application = debApplicationDigest(await boundedFile(path.join(root, "target/release/lockedin-flow-desktop"), limits.file));
   const bundle = path.join(root, "target/release/bundle");
   // Reject redirected output directories; never write through a build-tree link.
   if (await realpath(bundle) !== bundle || !(await lstat(bundle)).isDirectory()) throw new Error();

@@ -33,6 +33,7 @@ Copying into a cloud agent does not make that agent local.
 | Linux x64 | `.deb`, `.rpm`, `.AppImage` | Built against Ubuntu 22.04; other distributions and Wayland/X11 sessions require acceptance |
 | macOS Apple silicon | Existing native app and PKG | Use the root Mac installation guide |
 | Windows ARM, Linux ARM, Intel Mac | No validated download | Not advertised as supported until native build and device testing are recorded |
+| iOS / iPadOS / Android | Not supported | This project ships desktop software, not a mobile app or keyboard |
 
 The Windows installer includes the offline WebView2 installer. This makes it
 larger, but it avoids downloading that prerequisite during setup. The speech
@@ -130,7 +131,11 @@ the source actually built.
 
 Installer CI also performs silent NSIS/MSI and DEB installation/removal on
 ephemeral native runners. It checks installed model and notice digests, Windows
-executable branding, and actual payload removal. These destructive test scripts
+executable branding, DEB executable integrity, and actual payload removal.
+The DEB executable is checked against the independent build output with the
+pinned packager's exact bundle-type marker substitution; all other bytes must
+match. A successful package build alone does not satisfy this check.
+These destructive test scripts
 refuse ordinary local execution. They do not launch the app or grant microphone
 access. MSI uses [standard Windows Installer quiet/no-restart options](https://learn.microsoft.com/en-us/windows/win32/msi/standard-installer-command-line-options);
 its machine-wide deployment requires administrator rights, while NSIS defaults
