@@ -118,25 +118,13 @@ jobs:
           test -n "$(find target/release/bundle/rpm -name '*.rpm' -print -quit)"
           test -n "$(find target/release/bundle/appimage -name '*.AppImage' -print -quit)"
           git diff --exit-code -- Cargo.lock package-lock.json
+      - name: Install and remove Linux package in ephemeral runner
+        if: runner.os == 'Linux'
+        run: bash scripts/test-linux-package.sh
       - name: Check Windows installer and uninstaller in ephemeral runner
         if: runner.os == 'Windows'
         shell: powershell
-        run: |
-          $installer = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
-          if (-not $installer) { throw 'NSIS installer is missing.' }
-          if (-not (Get-ChildItem target/release/bundle/msi/*.msi)) { throw 'MSI installer is missing.' }
-          $installation = Join-Path $env:LOCALAPPDATA 'LockedInFlow-CI'
-          $process = Start-Process -FilePath $installer.FullName -ArgumentList "/S /D=$installation" -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw 'Installer failed.' }
-          $model = Get-ChildItem -LiteralPath $installation -Recurse -Filter ggml-base.en.bin | Select-Object -First 1
-          if (-not $model) { throw 'Installed offline model is missing.' }
-          if ((Get-FileHash $model.FullName -Algorithm SHA256).Hash.ToLower() -ne 'a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002') { throw 'Installed model digest differs.' }
-          if (-not (Get-ChildItem -LiteralPath $installation -Recurse -Filter SBOM.cdx.json)) { throw 'Installed inventory is missing.' }
-          $uninstaller = Get-ChildItem -LiteralPath $installation -Filter uninstall.exe | Select-Object -First 1
-          if (-not $uninstaller) { throw 'Standard uninstaller is missing.' }
-          $removed = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -PassThru
-          if ($removed.ExitCode -ne 0) { throw 'Uninstaller failed.' }
-          git diff --exit-code -- Cargo.lock package-lock.json
+        run: ./scripts/test-windows-installers.ps1
       - name: Upload protected-main evaluation installers only
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

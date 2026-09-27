@@ -108,6 +108,14 @@ access denied, and packages the app with its model, license notices, and
 CycloneDX build inventory. A successful CI run is not physical-microphone or
 supported-desktop acceptance.
 
+Installer CI also performs silent NSIS/MSI and DEB installation/removal on
+ephemeral native runners. It checks installed model and notice digests, Windows
+executable branding, and actual payload removal. These destructive test scripts
+refuse ordinary local execution. They do not launch the app or grant microphone
+access. MSI uses [standard Windows Installer quiet/no-restart options](https://learn.microsoft.com/en-us/windows/win32/msi/standard-installer-command-line-options);
+its machine-wide deployment requires administrator rights, while NSIS defaults
+to a per-user install.
+
 The developer-only `recognize_fixture` example accepts an optional repetition
 count from 1 to 16. It reuses one loaded model, compares every result against a
 synthetic expected-text fixture, and reports timing without printing transcripts.
