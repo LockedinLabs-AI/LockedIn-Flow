@@ -77,7 +77,7 @@ function packageRecord(value, expectedFormat, inventoryHash) {
       if (Object.hasOwn(value, "bytes") !== Object.hasOwn(value, "sha256")) fail();
     } else {
       keys(value, [...base, "bytes", "sha256", "metadata", "files"], expectedFormat === "deb" && value.reason === "tool-or-payload-validation-failed" ? ["failureStage"] : []);
-      if (Object.hasOwn(value, "failureStage") && !["identity-query", "dependency-query", "payload-read", "metadata-validation", "archive-validation", "archive-header", "archive-bounds", "archive-framing", "archive-entry-type", "archive-checksum", "archive-path", "resource-validation"].includes(value.failureStage)) fail();
+      if (Object.hasOwn(value, "failureStage") && !["identity-query", "dependency-query", "payload-read", "metadata-validation", "archive-validation", "archive-header", "archive-bounds", "archive-framing", "archive-entry-type", "archive-checksum", "archive-path", "resource-validation", "resource-model-count", "resource-model-hash", "resource-compliance-count", "resource-compliance-location", "resource-compliance-hash", "resource-application-missing", "resource-application-format", "resource-application-hash"].includes(value.failureStage)) fail();
       equal(value.files, null);
       if (value.reason === "rpm-original-payload-validation-unavailable") {
         equal(expectedFormat, "rpm");

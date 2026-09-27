@@ -67,7 +67,7 @@ test("DEB diagnostic enum round-trips only on unverified DEB failures; historica
     return report;
   };
   assert.equal(reviewEnvelope(encode(make()), context()).evidence.packages[0].status, "unverified");
-  const stages = ["identity-query", "dependency-query", "payload-read", "metadata-validation", "archive-validation", "archive-header", "archive-bounds", "archive-framing", "archive-entry-type", "archive-checksum", "archive-path", "resource-validation"];
+  const stages = ["identity-query", "dependency-query", "payload-read", "metadata-validation", "archive-validation", "archive-header", "archive-bounds", "archive-framing", "archive-entry-type", "archive-checksum", "archive-path", "resource-validation", "resource-model-count", "resource-model-hash", "resource-compliance-count", "resource-compliance-location", "resource-compliance-hash", "resource-application-missing", "resource-application-format", "resource-application-hash"];
   for (const stage of stages) {
     const report = make(); report.packages[0].failureStage = stage;
     const retained = reviewEnvelope(encode(report), context());

@@ -139,17 +139,21 @@ export function inspectTar(bytes, expected) {
   }
   const matches = (suffix) => [...entries].filter(([name, entry]) => entry.type === "file" && name.endsWith(suffix));
   const models = matches("/models/ggml-base.en.bin");
-  if (models.length !== 1 || models[0][1].sha256 !== expected.model) fail("resource-validation");
+  if (models.length !== 1) fail("resource-model-count");
+  if (models[0][1].sha256 !== expected.model) fail("resource-model-hash");
   const resourceRoot = models[0][0].slice(0, -"/models/ggml-base.en.bin".length);
   for (const label of required) {
     const found = matches("/compliance/" + label);
-    if (found.length !== 1 || found[0][0] !== resourceRoot + "/compliance/" + label
-        || found[0][1].sha256 !== expected[label]) fail("resource-validation");
+    if (found.length !== 1) fail("resource-compliance-count");
+    if (found[0][0] !== resourceRoot + "/compliance/" + label) fail("resource-compliance-location");
+    if (found[0][1].sha256 !== expected[label]) fail("resource-compliance-hash");
     found[0][1].verifiedResource = label;
   }
   models[0][1].verifiedResource = "pinned-model";
   const app = entries.get("usr/bin/lockedin-flow-desktop");
-  if (!app?.elf || app.sha256 !== expected.application) fail("resource-validation");
+  if (!app) fail("resource-application-missing");
+  if (!app.elf) fail("resource-application-format");
+  if (app.sha256 !== expected.application) fail("resource-application-hash");
   app.verifiedResource = "application";
   return [...entries.values()].sort((a, b) => a.pathSha256.localeCompare(b.pathSha256));
 }

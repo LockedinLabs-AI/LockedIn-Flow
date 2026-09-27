@@ -375,7 +375,7 @@ test("DEB failure stages distinguish tools and validation without exposing excep
     [{ stream: tar([...payload, ["../escape", "x"]]) }, "archive-path"],
     [{ stream: tar([...payload, ["usr/link", "", { type: "2", link: "bin/example" }]]) }, "archive-entry-type"],
     [{ stream: Buffer.concat([header("usr/huge", limits.file + 1), Buffer.alloc(1024)]) }, "archive-bounds"],
-    [{ resources: { ...expected, application: "0".repeat(64) } }, "resource-validation"],
+    [{ resources: { ...expected, application: "0".repeat(64) } }, "resource-application-hash"],
   ]) {
     const result = inspect(options);
     assert.equal(result.failureStage, stage);
@@ -384,4 +384,43 @@ test("DEB failure stages distinguish tools and validation without exposing excep
   }
   assert.equal(inspect().status, "payload-inspected");
   assert.equal(Object.hasOwn(inspect(), "failureStage"), false);
+});
+
+test("DEB resource diagnostics distinguish every predicate without exposing offending content", () => {
+  const inspect = (files = payload, resources = expected) => {
+    let call = 0;
+    const values = ["locked-in-flow", "0.5.0-alpha.1", "amd64", "", ""];
+    return inspectPackage("deb", "/synthetic/input.deb", packageBytes("deb"), resources, () => {
+      const index = call++;
+      return index < 5 ? Buffer.from(values[index] + "\n") : tar(files);
+    });
+  };
+  const cases = [
+    [payload.filter((_, i) => i !== 1), expected, "resource-model-count"],
+    [[...payload, ["usr/extra/models/ggml-base.en.bin", payload[1][1]]], expected, "resource-model-count"],
+    [payload, { ...expected, model: "0".repeat(64) }, "resource-model-hash"],
+    [payload.slice(1), expected, "resource-application-missing"],
+    [payload.map(([p, b], i) => [p, i === 0 ? Buffer.from("synthetic-not-elf") : b]), expected, "resource-application-format"],
+    [payload, { ...expected, application: "0".repeat(64) }, "resource-application-hash"],
+  ];
+  for (let i = 2; i < 6; i++) {
+    const label = payload[i][0].split("/").at(-1);
+    cases.push(
+      [payload.filter((_, index) => index !== i), expected, "resource-compliance-count"],
+      [[...payload, ["usr/extra/compliance/" + label, payload[i][1]]], expected, "resource-compliance-count"],
+      [payload.map(([p, b], index) => [index === i ? "usr/elsewhere/compliance/" + label : p, b]), expected, "resource-compliance-location"],
+      [payload, { ...expected, [label]: "0".repeat(64) }, "resource-compliance-hash"],
+    );
+  }
+  for (const [files, resources, stage] of cases) {
+    const result = inspect(files, resources);
+    assert.equal(result.failureStage, stage);
+    assert.equal(result.status, "unverified");
+    assert.equal(result.reason, "tool-or-payload-validation-failed");
+    assert.equal(result.metadata, null);
+    assert.equal(result.files, null);
+    assert.deepEqual(Object.keys(result).sort(), ["format", "bytes", "sha256", "status", "licenseReview", "reason", "metadata", "files", "failureStage"].sort());
+    assert.doesNotMatch(JSON.stringify(result), /synthetic|ggml|SBOM|MODEL|LICENSE|NOTICES|usr/);
+  }
+  assert.equal(inspect().status, "payload-inspected");
 });
