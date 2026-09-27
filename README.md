@@ -64,6 +64,10 @@ external LLM, or application egress. Each endpoint handles its own speech
 workload; there is no shared transcription backend to provision. The destination
 app may transmit the inserted text under its own policy.
 
+Offline means you can turn off the network and dictate into a local editor after
+setup. The speech models run on your device; they are third-party models, not
+models trained or owned by LockedIn Labs. See the [model inventory and licenses](docs/model-licenses.md).
+
 ```mermaid
 flowchart LR
   subgraph Mac[Your managed Mac]
@@ -258,6 +262,7 @@ installed-product acceptance. See [CHANGELOG.md](CHANGELOG.md) and
 - [Enterprise adoption and product boundary](docs/enterprise-adoption.md)
 - [Enterprise evaluation and pilot scorecard](docs/enterprise-evaluation.md)
 - [Engineering and publication standards](docs/project-standards.md)
+- [Product engineering contract](docs/project-standards.md#product-engineering-contract)
 - [Validation evidence](docs/validation.md)
 - [Compatibility status](docs/compatibility.md)
 - [Security reporting](SECURITY.md)

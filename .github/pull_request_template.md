@@ -2,6 +2,10 @@
 
 Describe the change and the user impact.
 
+Review the title and description before posting: no private chats, real
+transcripts, machine paths, personal contact details, or credentials. Automated
+checks can detect some patterns after submission; they cannot undo disclosure.
+
 ## Security and privacy impact
 
 - [ ] No change to permissions, network access, storage, logging, clipboard use, or target verification

@@ -3,6 +3,47 @@
 This page records what the current LockedIn Flow candidate has actually passed and
 keeps source validation separate from installed-product acceptance.
 
+## Cross-platform candidate: 27 September 2026
+
+The repository is public source; the work below is in the review branch, not a
+production download. The last fully completed baseline in this record is
+`5cad8e42def1dec9333d8cd37b7193ea397502e0`:
+
+| Evidence | Observed result | Scope |
+| --- | --- | --- |
+| [Mac CI](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36321325520) | Passed | Pinned-toolchain builds, source/tooling tests, publication checks, evaluation packaging; not Developer ID signing or physical microphone acceptance |
+| [Native desktop CI](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36321325362) | Windows and Linux passed | Native builds and tests, synthetic offline recognition, package verification, Windows EXE/MSI and Linux DEB installation/removal checks |
+| [Security](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36321325378) | Passed | Configured static-analysis and secret-scanning gates, not an independent penetration test |
+| [Dependency review](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36321325495) | Passed | Dependency changes covered by the configured review, not proof of no unknown vulnerabilities |
+
+Subsequent commits must receive their own relevant checks. The newer Windows
+WebView2 prerequisite-signature verification is additional work and is **not**
+covered by this baseline. Follow the exact commit's workflow checks in
+[the desktop pull request](https://github.com/LockedinLabs-AI/LockedIn-Flow/pull/10).
+
+The native Mac candidate is v0.4.17/build 19. The separate Windows/Linux port is
+v0.5.0-alpha.1; its own-window record/review/Copy workflow does not yet provide
+the Mac automatic-typing, shortcut, or encrypted-history feature set. A native
+installer test does not establish hardware microphone, GUI, screen-reader,
+meeting-app coexistence, upgrade/rollback, or enterprise fleet acceptance.
+
+### Remaining release decisions and evidence
+
+| Gate | What remains | Responsible role |
+| --- | --- | --- |
+| Source approval | Independent review of the exact naming, permission, and desktop changes; merge through the existing protections | Maintainer other than the author |
+| Trusted packages | Mac Developer ID signing/notarization, Windows signing, and approved Linux distribution artifacts with exact-artifact provenance and checksums | Release maintainer with controlled signing access |
+| Model distribution | Review each bundled model's redistribution terms and notices; verify offline provisioning on a clean endpoint | Model/dependency and release maintainers |
+| Real-device acceptance | Complete the [compatibility matrix](compatibility.md), including the affected microphone/focus scenarios and keyboard/screen-reader use | Device testers and release maintainer |
+| Privacy and performance | Observe the exact installed artifact with networking denied; measure latency, resource cost, accuracy, and terminology quality on a declared corpus | Security reviewer and pilot owner |
+| Enterprise operations | Test managed installation, update, rollback, removal, retention, permissions, and endpoint policy; assign support/security-response ownership | Endpoint administrator and service owner |
+| Public availability | Publish only accepted artifacts; test website/README download paths against those exact bytes and synchronize supported-platform claims | Release maintainer |
+
+These are the remaining delivery gates, not reasons to add unrelated features.
+A platform can launch once its own requirements pass; it must not inherit
+another platform's acceptance. The dated local evidence below remains useful
+history, not the latest test count or coverage for every later commit.
+
 ## Current review candidate
 
 The v0.4.17/build 19 source candidate completed the local checks below on

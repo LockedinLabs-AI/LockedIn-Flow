@@ -8,6 +8,10 @@ evidence are approved.
 
 ### Added
 
+- Added content-redacted pull-request metadata checks and an evidence-linked
+  engineering contract covering installation, offline behavior, reliability,
+  permissions, supply-chain integrity, accessibility, and maintenance. Platform
+  acceptance and production-download status are recorded separately from CI.
 - Added a guarded Mac release-packaging command for reviewed source, Developer ID
   signing, app/DMG notarization and stapling, and exact-artifact evidence. It does
   not install or publish software; signed release-host and device acceptance
