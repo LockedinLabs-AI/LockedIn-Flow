@@ -13,6 +13,14 @@ tests remain part of release acceptance. Operating-system services, WebView2 or
 WebKit, crash reporting, clipboard managers, and the destination app are separate
 components and must be covered by enterprise endpoint policy.
 
+The Windows package contains Microsoft's **Evergreen offline installer**. Offline
+setup does not turn Evergreen into a fixed, network-disabled runtime: its shared
+runtime has a separate update service. The endpoint owner must manage that
+service and validate blocked-network behavior, including WebView2 child
+processes. LockedIn Flow does not disable another application's shared security
+updates or modify system-wide Microsoft policies. See Microsoft's
+[distribution and servicing guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution).
+
 The native build explicitly disables Whisper's curl, FFmpeg and example-server
 features, ggml RPC, and dynamic backend loading. Cargo forces these values so
 ordinary shell settings from another local-model project cannot enable them.
@@ -104,6 +112,23 @@ guessing license obligations. See the [Cargo license declaration reference](http
 Syntax validation is not license compatibility approval or notice closure.
 Release review must close missing notices and inventory native/system libraries
 and the bundled WebView2 installer separately.
+
+Windows CI now checks the offline prerequisite **before executing either app
+installer**. It reads the exact WebView2 paths from the pinned bundler's generated
+NSIS/WiX sources, validates timestamped Microsoft Authenticode signatures,
+cross-checks file hashes, and rejects differing runtime inputs between formats.
+`WINDOWS-PACKAGING-INPUTS.json` binds those input bytes and installer file version
+to the final NSIS/MSI hashes and source commit. No local paths or raw certificate
+subjects are exported. The file version identifies the installer executable;
+it is not asserted to be the installed browser-engine version.
+
+This is a separate build-input record, not a modification of the already embedded
+Cargo SBOM, extraction proof for final installer contents, a Microsoft license
+grant, or full native dependency closure. WebView2 is governed by Microsoft's
+terms, not this project's MIT license. Its redistribution terms and the actual
+installed runtime version remain part of release review. Reproduce the check on
+a fresh native Windows build with `node scripts/verify-windows-prerequisites.mjs`;
+it does not run the prerequisite or replace an existing evidence report.
 
 ## Coexistence and support
 

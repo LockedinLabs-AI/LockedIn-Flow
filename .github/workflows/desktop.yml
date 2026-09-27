@@ -119,6 +119,9 @@ jobs:
         run: npm run build -- --ci --bundles deb,rpm,appimage
       - name: Verify native artifact provenance and build-path privacy
         run: node scripts/verify-artifact.mjs
+      - name: Verify Windows offline runtime input identity and signatures
+        if: runner.os == 'Windows'
+        run: node scripts/verify-windows-prerequisites.mjs
       - name: Check Linux packaged payload
         if: runner.os == 'Linux'
         run: |
@@ -147,6 +150,7 @@ jobs:
             desktop/target/release/bundle/deb/*.deb
             desktop/target/release/bundle/rpm/*.rpm
             desktop/target/release/bundle/appimage/*.AppImage
+            desktop/target/release/bundle/WINDOWS-PACKAGING-INPUTS.json
             desktop/app/resources/compliance/*
           if-no-files-found: error
           retention-days: 7

@@ -41,6 +41,11 @@ release, not described as negligible. Linux packages rely on distribution GTK,
 WebKitGTK, and audio libraries; an air-gapped administrator must pre-stage those
 prerequisites. AppImage is not a promise of support for every Linux distribution.
 
+Offline WebView2 setup and the shared Evergreen runtime's ongoing update service
+are separate boundaries. Managed environments must validate endpoint policy for
+both. Windows packaging checks record the Microsoft-signed prerequisite's exact
+identity and final installer hashes; see [the security boundary](SECURITY.md).
+
 Normal use requires a microphone and the operating system's permission to use
 it. There is no Accessibility, synthetic keyboard, remote-control, or shell
 permission in this port. Another application can still select an exclusive
