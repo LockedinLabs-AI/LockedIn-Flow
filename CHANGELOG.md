@@ -8,6 +8,15 @@ evidence are approved.
 
 ### Changed
 
+- Added an in-app speech-model setup guide with separate source-build and
+  managed-Mac instructions, explicit local rechecking, and keyboard-accessible
+  controls that remain available in compact windows.
+- Made in-app transcription the default, requiring only Microphone permission.
+  Automatic typing is an explicit opt-in with a clear explanation of the broad
+  macOS Accessibility permission. Recording never requests Accessibility access;
+  incorrectly named and unbundled builds cannot request it through the app flow.
+- Made first-run completion depend on a verified model and the permissions for
+  the selected mode. Completion opens the home window without starting a recording.
 - Standardized product labels and package names on LockedIn Flow, without an
   edition suffix. Existing storage and Keychain identifiers remain unchanged.
 - Licensed the LockedIn Flow source under the MIT License for individual and
@@ -41,6 +50,9 @@ evidence are approved.
 
 ### Fixed
 
+- Added recovery regressions covering 200 microphone-route-change cycles and
+  100 stop/cancel-during-retry cycles, including retained audio, stale callbacks,
+  and prevention of overlapping microphone sessions.
 - Restrict all transcript clipboard writes and restoration to the current Mac
   using the operating system's cross-device clipboard exclusion option.
 - Exclude test-mode Keychain and preferences hooks from release compilation and

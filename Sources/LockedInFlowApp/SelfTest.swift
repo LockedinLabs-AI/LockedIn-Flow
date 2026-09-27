@@ -567,6 +567,52 @@
                 to: directory.appendingPathComponent("lockedin-home-model-unavailable.png")
             )
 
+            for size in [CGSize(width: 600, height: 660), CGSize(width: 520, height: 480)] {
+                try writeHostedPNG(
+                    from: ModelSetupView()
+                        .environmentObject(state)
+                        .frame(width: size.width, height: size.height)
+                        .preferredColorScheme(.light),
+                    size: size,
+                    appearance: .aqua,
+                    to: directory.appendingPathComponent(
+                        "lockedin-model-setup-\(Int(size.width)).png")
+                )
+            }
+            try writeHostedPNG(
+                from: ModelSetupView(installation: .managedMac)
+                    .environmentObject(state)
+                    .frame(width: 600, height: 660)
+                    .preferredColorScheme(.dark),
+                size: CGSize(width: 600, height: 660),
+                appearance: .darkAqua,
+                to: directory.appendingPathComponent("lockedin-model-setup-managed.png")
+            )
+            try writeHostedPNG(
+                from: OnboardingView(initialPage: 2)
+                    .environmentObject(state)
+                    .frame(width: 560, height: 500),
+                size: CGSize(width: 560, height: 500),
+                appearance: .aqua,
+                to: directory.appendingPathComponent("lockedin-onboarding-model-setup.png")
+            )
+            state.modelReady = true
+            state.microphoneAuthorized = false
+            state.accessibilityTrusted = false
+            state.errorMessage = nil
+            state.modelStatus = "Ready"
+            try writeHostedPNG(
+                from: OnboardingView(initialPage: 2)
+                    .environmentObject(state)
+                    .frame(width: 560, height: 500),
+                size: CGSize(width: 560, height: 500),
+                appearance: .aqua,
+                to: directory.appendingPathComponent("lockedin-onboarding-permissions-needed.png")
+            )
+            state.modelReady = false
+            state.microphoneAuthorized = true
+            state.accessibilityTrusted = true
+
             state.errorMessage = nil
             state.modelStatus = "Verifying provisioned speech model…"
             state.pipelineState = .preparing
@@ -651,9 +697,11 @@
         private static func writeHostedPNG<Content: View>(
             from content: Content,
             size: CGSize,
+            appearance: NSAppearance.Name? = nil,
             to url: URL
         ) throws {
             let hostingView = NSHostingView(rootView: content)
+            if let appearance { hostingView.appearance = NSAppearance(named: appearance) }
             hostingView.frame = CGRect(origin: .zero, size: size)
             hostingView.layoutSubtreeIfNeeded()
             hostingView.displayIfNeeded()

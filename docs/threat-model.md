@@ -19,6 +19,7 @@ session and operating-system security boundary are trustworthy.
 
 | Threat | Implemented control | Residual risk |
 | --- | --- | --- |
+| Unexpected control permission | in-app transcription is the default and needs no Accessibility access; automatic typing requires an explicit explanation and opt-in; recording never raises an Accessibility prompt; legacy and unbundled identities are rejected by the request policy | macOS Accessibility remains a broad grant, not typing-only; disabling the feature does not revoke an existing OS permission |
 | Audio or transcript exfiltration | no remote inference adapter; no telemetry SDK; content prohibited in logs | a compromised host or modified build is outside this guarantee |
 | Insertion into the wrong editor | destination application and activation generation freeze when recording ends; the current field is resolved and checked only at delivery; focus, secure-state, semantic-path, range, and receipt checks surround the single write | changing fields within the same application before delivery intentionally changes the current destination; hostile or defective Accessibility implementations can provide misleading metadata |
 | Insertion into a password field | secure-role and subrole refusal; unknown security state fails closed | an application that falsely reports a normal field remains a platform risk |
@@ -54,3 +55,6 @@ session and operating-system security boundary are trustworthy.
 6. Secrets, customer data, and protected health information are not accepted in
    public issues, tests, or fixtures.
 7. The application never downloads, repairs, or mutates a speech-model cache.
+8. In-app transcription never resolves an external text target, interprets
+   cross-app editing commands, or automatically writes the clipboard. The
+   delivery mode is frozen at capture start and preserved for retry.

@@ -53,7 +53,9 @@ Engineering evidence: [AI-assisted SDLC](docs/secure-development.md) ·
 
 LockedIn Flow is a reviewable endpoint utility for managed Apple-silicon Macs.
 It captures speech, transcribes it with an on-device model, cleans the text
-locally, and inserts it into the focused application. Microphone audio and
+locally, and shows a transcript you can copy. Automatic typing into another app
+is an explicit opt-in; ordinary transcription needs no Accessibility access.
+Microphone audio and
 transcript text are not sent to a hosted transcription or large-language-model
 service.
 
@@ -67,7 +69,9 @@ flowchart LR
   subgraph Mac[Your managed Mac]
     A[Microphone · memory] --> B[Local speech model]
     B --> C[Local cleanup and terminology]
-    C --> D[Focused application]
+    C --> D[In-app transcript]
+    D --> E[Copy when you choose]
+    C -. Optional automatic typing .-> F[Focused application]
   end
 ```
 
@@ -122,7 +126,8 @@ targets.
 - deterministic cleanup for punctuation, fillers, formatting, and spoken code
 - optional contextual cleanup through Apple's on-device Foundation Models
 - global shortcut and menu-bar workflow
-- Accessibility-based text insertion with a verified pasteboard fallback
+- in-app transcription without Accessibility access or automatic clipboard changes
+- optional Accessibility-based text insertion with a verified pasteboard fallback
 - optional encrypted persistence for history and recovery; encrypted local vocabulary and snippets
 - profile-scoped terminology import with quoted CSV, strict limits, local encrypted storage, and a [synthetic starter template](examples/terminology-template.csv)
 - session-only dictation history by default, with configurable encrypted retention
@@ -154,7 +159,7 @@ locally and remain until the user deletes them.
 - Apple silicon Mac
 - macOS 15 or later
 - Node.js 20 or later for the optional npm source-evaluation commands
-- Microphone and Accessibility permission
+- Microphone permission; Accessibility is optional for automatic typing into other apps
 - approximately 484 MB for the default speech and voice-activity models
 
 Base dictation runs on macOS 15. Optional Foundation Models cleanup,

@@ -12,7 +12,8 @@ MIT License, including commercial and enterprise use.
 | Managed enterprise evaluation | Pre-stage models and deploy through your Mac management system | [Managed deployment guide](managed-deployment.md) |
 
 The installed app needs an Apple silicon Mac, macOS 15 or later, and Microphone
-and Accessibility permission. Speech models take approximately 484 MB. Optional
+permission. Accessibility is optional and used only for automatic typing into
+other apps. Speech models take approximately 484 MB. Optional
 generative cleanup requires macOS 26 and an available Apple on-device model;
 core dictation does not require an external LLM.
 
@@ -43,19 +44,38 @@ Flow installations.
 
 ## Your first dictation
 
-1. Open LockedIn Flow. Allow microphone access and follow the
-   Accessibility permission instructions in System Settings.
-2. Confirm the provisioned speech model is ready.
-3. Open Notes or another supported editor and click an ordinary text field.
-4. Press **Control-Shift-Space**, speak, then press it again to finish. Keep the
-   intended field focused until the text appears.
-5. Review the text. Use Vocabulary for names and terms you want written
+1. Open the packaged **LockedIn Flow** app and allow Microphone access. Ordinary
+   transcription does not request Accessibility access or control of other apps.
+2. Confirm the provisioned speech model is ready. If it is unavailable, choose
+   **Set up models** in the home window or **Setup guide** beside Model in the
+   menu. The local guide separates source-build commands from managed-Mac
+   instructions. It never downloads or runs a command for you. After provisioning,
+   choose **Recheck models**. Onboarding points back to any missing permissions;
+   **Open LockedIn Flow** completes setup without starting a recording.
+3. Press **Control-Shift-Space**, speak, then press it again to finish.
+4. Review the transcript in LockedIn Flow. Choose **Copy**, then paste it into
+   your destination yourself. The app does not automatically change the clipboard.
+5. Use Vocabulary for names and terms you want written
    consistently; the [CSV example](../examples/terminology-template.csv) contains
    synthetic entries only.
 
 Choose a shortcut that other dictation apps do not share, and record with one
 dictation app at a time. A second installed app is not by itself a conflict.
 Voice Focus is optional; standard microphone capture is the default.
+
+### Optional automatic typing
+
+In **Settings → Permissions**, choose **Review and enable…** only if you want
+LockedIn Flow to insert text directly into other applications. The app explains
+the access before requesting it. macOS calls Accessibility a permission to control
+your computer; it is broad, not a typing-only grant. Your organization may choose
+to leave it disabled. In-app transcription remains available without it.
+
+Any permission request must identify **LockedIn Flow**. Decline incorrectly named
+requests. Unbundled command-line builds and legacy or mismatched application
+identities cannot request Accessibility through the supported application flow.
+Turning automatic typing off does not revoke an existing macOS grant; revoke it
+separately in System Settings when needed.
 
 ## If something needs attention
 

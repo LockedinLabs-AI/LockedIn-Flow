@@ -12,8 +12,8 @@ organization-specific risk assessment.
 - The LockedIn Flow bundle identifier is `ai.lockedin.flow.community`.
 - Existing internal identifiers and storage paths are retained for compatibility
   with earlier source evaluations. They do not designate a separate product edition.
-- The application is not App-Sandboxed. It needs user-granted Microphone and
-  Accessibility access and otherwise runs with the signed-in user's normal
+- The application is not App-Sandboxed. It needs user-granted Microphone access.
+  Accessibility is optional for automatic typing into other apps. It otherwise runs with the signed-in user's normal
   filesystem access.
 
 ## Build and provenance
@@ -157,6 +157,10 @@ step, not application runtime traffic. Block application egress before first
 launch and confirm the selected model reaches Ready.
 
 ## Permissions and policy
+
+In-app transcription is the default and does not require Accessibility approval.
+Automatic typing is an explicit opt-in; existing macOS permission alone does not
+enable it. Keep that feature off where broad cross-application access is prohibited.
 
 Use a signed, stable designated requirement before creating a Privacy
 Preferences Policy Control (PPPC) profile. Scope Accessibility narrowly to the

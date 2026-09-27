@@ -36,6 +36,38 @@ dependency-lock hash, SBOM hash, and model-manifest hashes in its build
 provenance. The approved public tree must be built and accepted as its own
 artifact before release.
 
+## Additional first-use and recovery checks
+
+The least-privilege first-dictation candidate completed additional local checks on
+27 September 2026:
+
+- All 548 Swift tests passed, including delivery-mode and permission-identity
+  regressions plus two added recovery stress tests.
+  The new tests exercise 200 route-change cycles and 100 stop/cancel-during-retry
+  cycles using the production capture manager with synthetic engine callbacks.
+  They do not substitute for physical-device interruption testing.
+- All 54 npm tooling tests passed, including first-use permission, model-setup,
+  and no-implicit-recording policies.
+- Five synthetic speech recordings passed a local-recognizer smoke test with
+  process networking denied. Every normalized word matched; punctuation varied.
+  This is not an accuracy benchmark, microphone test, or whole-device traffic
+  assessment.
+- Native checks of the packaged application verified Microphone-only first-use
+  guidance, automatic typing off by default, a correctly branded explanation
+  before the optional Accessibility request, and cancellation that leaves
+  automatic typing disabled without raising an OS permission request.
+  No Microphone or Accessibility permission was granted during these checks.
+- The packaged application opened and loaded the provisioned Parakeet model.
+  Real-microphone capture and cross-application insertion acceptance remain
+  outstanding. Prior compact-layout and window-lifecycle checks used synthetic
+  application state; they are not microphone evidence.
+- Evaluation app packaging, strict bundle-signature verification, SBOM validation,
+  and unsigned, no-script installer packaging passed. These are local evaluation
+  artifacts, not Developer ID signed or notarized releases.
+
+Public workflow results must cover the exact proposed commit before merge;
+earlier CI results do not cover these later changes.
+
 ## What this does not prove
 
 The evidence above does not prove that the candidate is ready for general
