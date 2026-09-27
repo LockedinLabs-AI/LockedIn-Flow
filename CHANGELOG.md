@@ -8,6 +8,10 @@ evidence are approved.
 
 ### Added
 
+- Added a guarded Mac release-packaging command for reviewed source, Developer ID
+  signing, app/DMG notarization and stapling, and exact-artifact evidence. It does
+  not install or publish software; signed release-host and device acceptance
+  remain separate from its automated orchestration tests.
 - Added an evaluation-stage Windows/Linux desktop workspace with a real CPU
   speech engine, bundled verified model, explicit Copy, session terminology,
   and bounded capture with in-memory recovery. The native Mac app is unchanged.

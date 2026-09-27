@@ -56,6 +56,63 @@ artifact needs its own provenance record or attestation; the evaluation
 attestations must not be presented as covering a separately produced release
 artifact.
 
+### Mac signing preparation
+
+`node scripts/package-mac-release.mjs --help` describes the controlled Mac
+packaging command. It operates only on a clean commit that exactly matches the
+live corporate `main` branch. Use a dedicated, trusted release host and a fresh
+clone, not a developer's mutable dependency cache. Run **after source review**
+with the pinned Mac toolchain, existing Developer ID Application certificate fingerprint,
+Apple team identifier, and an existing `notarytool` Keychain profile. Never put
+certificate private keys, passwords, or exported credentials in arguments,
+source files, or logs.
+
+```sh
+node scripts/package-mac-release.mjs \
+  --commit <approved-main-sha> \
+  --identity <certificate-sha1> \
+  --team <apple-team-id> \
+  --notary-profile <keychain-profile> \
+  --output <new-absolute-directory-outside-the-checkout> \
+  --check-only
+```
+
+Replace the placeholders before running the command. `--check-only` verifies
+source, toolchain, and the locally available signing identity without building,
+signing, or submitting software. It does not prove private-key access or notary
+credentials. Remove that option only when authorized to create the signed
+candidate. Packaging contacts GitHub and Apple's timestamp, notarization, and
+ticket services; this is a **release-build network requirement**, not an
+application-runtime requirement.
+
+The command builds in a new private staging directory, checks source/SBOM
+provenance, and signs the app with the hardened runtime and microphone-only
+entitlements. The current native Swift app has one statically linked executable;
+new frameworks, nested code, or executable resources stop the process until their
+signing plan is reviewed. It does not recursively sign unknown code with `--deep`.
+After Apple accepts the app, it checks the full notarization log for issues,
+staples and validates the app ticket, packages a standard drag-to-Applications
+DMG, then signs, notarizes, and staples that DMG. Both the app and DMG must pass
+Gatekeeper. These steps follow Apple's
+[notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
+
+The final `release-evidence.json` records the source, unchanged release stage,
+artifact SHA-256/size, signing fingerprint/team, accepted notarization jobs, and
+SBOM hash. It is written **only after all checks pass**. It is an evidence record,
+not a GitHub provenance attestation or a device-acceptance result. Review and
+attest the final DMG and its SBOM separately before publication. Do not upload
+the entire staging directory or the temporary notarization ZIP. The tool never
+installs the app, changes permissions, creates a release/tag, or publishes files;
+it also never overwrites existing output. On failure, retain the private staging
+directory for diagnosis and use a fresh output directory for a new attempt.
+
+This path creates a native Apple-silicon Mac candidate, not Windows/Linux
+artifacts or a signed MDM PKG. Speech models remain separately provisioned and
+verified; this DMG does not add model redistribution. Automated tests exercise
+orchestration and failure boundaries with synthetic command responses. Actual
+Developer ID signing/notarization and offline first-launch acceptance still need
+release-host/device evidence; test success does not assert they have occurred.
+
 Every generated SBOM has a fresh RFC 4122 UUID serial number, as recommended by
 CycloneDX 1.6 and required by the pinned GitHub attestation action. The local
 validator rejects missing or malformed identities before artifact upload. For
