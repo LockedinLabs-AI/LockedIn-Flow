@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { rustHost } from "./build-platform.mjs";
 import { nativeInventory, nativeReferences } from "./native-inventory.mjs";
+import { cargoLicenseExpression, assertInventoryLicenses } from "./inventory-licenses.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -73,20 +74,24 @@ const components = [];
 for (const pkg of packages) {
   if (!pkg.license)
     throw new Error("A dependency is missing its license expression.");
+  const licenseExpression = cargoLicenseExpression(pkg.license);
   const component = {
     type: "library",
     "bom-ref": reference(pkg),
     name: pkg.name,
     version: pkg.version,
     purl: reference(pkg),
-    licenses: [{ expression: pkg.license }],
+    licenses: [{ expression: licenseExpression }],
   };
+  if (licenseExpression !== pkg.license)
+    component.properties = [{ name: "lockedin:cargo-license-declaration", value: pkg.license }];
   const checksum = checksums.get(`${pkg.name}@${pkg.version}`);
   if (checksum) component.hashes = [{ alg: "SHA-256", content: checksum }];
   if (pkg.name === "glib") {
     if (path.dirname(pkg.manifest_path) !== path.join(root, "vendor", "glib"))
       throw new Error("The reviewed GLib backport is not selected.");
     component.properties = [
+      ...(component.properties ?? []),
       {
         name: "lockedin:source-modification",
         value:
@@ -195,6 +200,7 @@ const sbom = {
       "bom-ref": "lockedin-flow",
       name: "LockedIn Flow",
       version: "0.5.0-alpha.1",
+      licenses: [{ license: { id: "MIT" } }],
     },
     properties: [
       { name: "lockedin:source-revision", value: revision },
@@ -229,6 +235,7 @@ const sbom = {
     ...native.dependencies,
   ],
 };
+assertInventoryLicenses(sbom);
 const output = path.join(root, "app/resources/compliance");
 await mkdir(output, { recursive: true });
 await writeFile(

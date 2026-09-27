@@ -92,6 +92,12 @@ scan; inspect upstream native security changes during release review. It is not 
 complete inventory of the host OS. License notices include published dependency
 license files, with separate model, native speech-backend, and embedded CPU
 implementation attribution.
+Inventory generation and artifact verification validate SPDX license syntax.
+The license parser is a locked build-time dependency, not application code.
+Simple legacy Cargo slash-separated alternatives are exported as `OR`, with the
+original declaration retained in metadata; ambiguous syntax fails instead of
+guessing license obligations. See the [Cargo license declaration reference](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields).
+Syntax validation is not license compatibility approval or notice closure.
 Release review must close missing notices and inventory native/system libraries
 and the bundled WebView2 installer separately.
 

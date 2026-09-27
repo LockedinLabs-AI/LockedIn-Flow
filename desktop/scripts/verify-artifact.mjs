@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { rustHost } from "./build-platform.mjs";
 import { nativeReferences } from "./native-inventory.mjs";
 import { privatePathFindings } from "./build-path-privacy.mjs";
+import { assertInventoryLicenses } from "./inventory-licenses.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -63,8 +64,7 @@ const modelComponent = sbom.components.find(
 );
 if (modelComponent?.hashes?.[0]?.content !== model.sha256)
   throw new Error("Model inventory differs.");
-if (sbom.components.some((component) => !component.licenses?.length))
-  throw new Error("Missing component license.");
+assertInventoryLicenses(sbom);
 for (const ref of Object.values(nativeReferences)) {
   const component = sbom.components.find((entry) => entry["bom-ref"] === ref);
   if (
