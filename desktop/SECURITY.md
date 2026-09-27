@@ -70,10 +70,16 @@ dependency when the framework supports a maintained replacement. It is not
 silenced in the advisory command. Unknown unsoundness and vulnerability findings
 fail the build.
 
-The generated CycloneDX inventory describes Cargo's target/build graph, model
-digest, source revision/state, lockfile hashes, and Rust version. It is not a
+The generated CycloneDX inventory describes Cargo's target/build graph, nested
+whisper.cpp and ggml sources, model digest, source revision/state, lockfile
+hashes, and Rust version. Native versions are read from the exact bundled CMake
+sources, with the carrier archive checksum and source-tree fingerprints. The
+carrier's repository revision is not presented as a standalone ggml commit.
+These native components do not gain independent advisory coverage from a Cargo
+scan; inspect upstream native security changes during release review. It is not a
 complete inventory of the host OS. License notices include published dependency
-license files, with separate model and native speech-backend attribution.
+license files, with separate model, native speech-backend, and embedded CPU
+implementation attribution.
 Release review must close missing notices and inventory native/system libraries
 and the bundled WebView2 installer separately.
 

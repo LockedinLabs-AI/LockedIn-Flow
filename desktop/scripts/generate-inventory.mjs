@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { rustHost } from "./build-platform.mjs";
+import { nativeInventory, nativeReferences } from "./native-inventory.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -129,6 +130,13 @@ for (const pkg of packages) {
       "",
     );
 }
+const nativePackage = packages.find((pkg) => pkg.name === "whisper-rs-sys");
+const native = await nativeInventory(
+  nativePackage,
+  checksums.get(`${nativePackage?.name}@${nativePackage?.version}`),
+);
+components.push(...native.components);
+notices.push(...native.notices);
 const model = JSON.parse(
   await readFile(path.join(root, "models.json"), "utf8"),
 );
@@ -213,12 +221,12 @@ const sbom = {
     },
     ...packages.map((pkg) => ({
       ref: reference(pkg),
-      dependsOn: nodes
-        .get(pkg.id)
-        .dependencies.map((id) => references.get(id))
-        .filter(Boolean)
-        .sort(),
+      dependsOn: [
+        ...nodes.get(pkg.id).dependencies.map((id) => references.get(id)).filter(Boolean),
+        ...(pkg.id === nativePackage.id ? [nativeReferences.whisper] : []),
+      ].sort(),
     })),
+    ...native.dependencies,
   ],
 };
 const output = path.join(root, "app/resources/compliance");

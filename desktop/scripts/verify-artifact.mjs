@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { rustHost } from "./build-platform.mjs";
+import { nativeReferences } from "./native-inventory.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -63,6 +64,15 @@ if (modelComponent?.hashes?.[0]?.content !== model.sha256)
   throw new Error("Model inventory differs.");
 if (sbom.components.some((component) => !component.licenses?.length))
   throw new Error("Missing component license.");
+for (const ref of Object.values(nativeReferences)) {
+  const component = sbom.components.find((entry) => entry["bom-ref"] === ref);
+  if (
+    !component ||
+    !component.properties?.some((entry) =>
+      entry.name === "lockedin:source-tree-sha256" && /^[a-f0-9]{64}$/.test(entry.value))
+  )
+    throw new Error("Missing nested native source provenance.");
+}
 const binary = await read(
   `target/release/lockedin-flow-desktop${process.platform === "win32" ? ".exe" : ""}`,
 );
