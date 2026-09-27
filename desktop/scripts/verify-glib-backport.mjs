@@ -5,6 +5,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { archiveExtraction } from "./build-platform.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const digest =
@@ -48,7 +49,8 @@ try {
   const file = path.join(temporary, "upstream.crate");
   await writeFile(file, archive, { flag: "wx" });
   // Extract only the immutable archive verified above, never arbitrary user input.
-  execFileSync("tar", ["-xzf", file, "-C", temporary], { stdio: "pipe" });
+  const extraction = archiveExtraction(temporary);
+  execFileSync("tar", extraction.args, extraction.options);
   const upstream = path.join(temporary, "glib-0.18.5");
   const vendor = path.join(root, "vendor/glib");
   const expected = (await walk(upstream)).filter(

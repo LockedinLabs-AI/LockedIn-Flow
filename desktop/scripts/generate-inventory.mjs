@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { rustHost } from "./build-platform.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -13,9 +14,9 @@ const run = (command, args) =>
     maxBuffer: 32 * 1024 * 1024,
   });
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const host = run("rustc", ["-vV"]).match(/^host: ([-a-z0-9]+)$/m)?.[1];
+const host = rustHost(run("rustc", ["-vV"]));
 const target = process.argv[2] ?? host;
-if (!target || !/^[-a-z0-9]+$/.test(target))
+if (!target || !/^[-a-z0-9_]+$/.test(target))
   throw new Error("A Rust target triple is required.");
 const metadata = JSON.parse(
   run("cargo", [
@@ -101,8 +102,13 @@ for (const pkg of packages) {
   );
   const directory = path.dirname(pkg.manifest_path);
   const files = await licenseFiles(directory);
-  if (pkg.license_file && !files.includes(pkg.license_file))
-    files.push(pkg.license_file);
+  if (pkg.license_file) {
+    const relative = path.relative(
+      directory,
+      path.resolve(directory, pkg.license_file),
+    );
+    if (!files.includes(relative)) files.push(relative);
+  }
   for (const file of files) {
     const resolved = path.resolve(directory, file);
     if (!resolved.startsWith(directory + path.sep))

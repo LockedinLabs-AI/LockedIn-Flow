@@ -105,6 +105,8 @@ test("build tools have no automatic install hooks", () => {
   const cpu = read(".cargo/config.toml");
   for (const flag of [
     "GGML_NATIVE",
+    "GGML_SSE42",
+    "GGML_BMI2",
     "GGML_AVX",
     "GGML_AVX2",
     "GGML_AVX512",

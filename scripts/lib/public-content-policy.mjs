@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 const rootFiles = new Set([
-  ".gitignore", ".swift-format", "CHANGELOG.md", "CODE_OF_CONDUCT.md",
+  ".gitattributes", ".gitignore", ".swift-format", "CHANGELOG.md", "CODE_OF_CONDUCT.md",
   "CONTRIBUTING.md", "GOVERNANCE.md", "Info.plist", "LICENSE", "NOTICE",
   "Package.resolved", "Package.swift", "README.md", "SECURITY.md", "SUPPORT.md",
   "TRADEMARKS.md", "entitlements.plist", "package.json", "package-lock.json",
