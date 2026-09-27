@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { linkerPrivacyFlags, privatePathFindings } from "../scripts/build-path-privacy.mjs";
+import { linkerPrivacyFlags, privatePathFindings, sourcePathMappings, nativePrivacyFlags, nativeCompilerEnvironment } from "../scripts/build-path-privacy.mjs";
 
 const prefix = "X:\\synthetic-checkout\\";
 const boundaries = [{ scope: "checkout", prefix }];
@@ -32,4 +32,33 @@ test("ordinary UTF-8 and UTF-16 paths still fail the artifact boundary", () => {
 
 test("privacy diagnostics reject unrecognized labels instead of echoing them", () => {
   assert.throws(() => privatePathFindings(Buffer.alloc(0), [{ scope: "untrusted", prefix }]), /Invalid artifact/);
+});
+
+test("Windows mappings cover native and forward separators without splitting spaces", () => {
+  const mappings = [["X:\\synthetic checkout", "/lockedin-flow"]];
+  assert.deepEqual(sourcePathMappings(mappings, "win32"), [
+    ["X:\\synthetic checkout", "/lockedin-flow"],
+    ["X:/synthetic checkout", "/lockedin-flow"],
+  ]);
+  assert.deepEqual(nativePrivacyFlags(mappings, "win32"), [
+    "/clang:-ffile-prefix-map=X:\\synthetic checkout=/lockedin-flow",
+    "/clang:-ffile-prefix-map=X:/synthetic checkout=/lockedin-flow",
+  ]);
+  const original = { CXXFLAGS: "/DSYNTHETIC=1" };
+  const env = nativeCompilerEnvironment(original, mappings, "win32");
+  assert.equal(env.CC, "clang-cl");
+  assert.equal(env.CXX, "clang-cl");
+  assert.equal(env.CMAKE_GENERATOR, "Ninja");
+  assert.ok(env.CMAKE_CXX_FLAGS.includes('"/clang:-ffile-prefix-map=X:/synthetic checkout=/lockedin-flow"'));
+  assert.match(env.CMAKE_CXX_FLAGS, /^\/DSYNTHETIC=1 \/utf-8 /);
+  assert.deepEqual(original, { CXXFLAGS: "/DSYNTHETIC=1" });
+});
+
+test("Unix compiler selection is preserved and unsafe mapping syntax is rejected", () => {
+  const env = nativeCompilerEnvironment({ CC: "cc", CFLAGS: "-DSYNTHETIC=1" }, [["/synthetic checkout", "/source"]], "linux");
+  assert.equal(env.CC, "cc");
+  assert.equal(env.CMAKE_GENERATOR, undefined);
+  assert.equal(env.CFLAGS, '-DSYNTHETIC=1 -ffile-prefix-map="/synthetic checkout"=/source');
+  for (const from of ["", '/synthetic"input', "/synthetic;input", "/synthetic\ninput"])
+    assert.throws(() => sourcePathMappings([[from, "/source"]], "win32"), /Unsupported compiler/);
 });

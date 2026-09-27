@@ -53,7 +53,9 @@ Use a native build host for the target OS, Node.js 22+, and Rust 1.94.1. Node is
 build tool, not an installed application dependency. These are repository npm
 commands, not a claim that an end-user npm package has been published.
 
-Windows needs Microsoft C++ Build Tools, CMake, and LLVM/libclang. Ubuntu 22.04
+Windows needs Microsoft C++ Build Tools and its Windows SDK, CMake, Ninja, and
+LLVM with `clang-cl` and libclang. The release wrapper selects clang-cl/Ninja
+for native speech code while retaining the MSVC ABI and Rust target. Ubuntu 22.04
 needs the packages recorded in [.github/workflows/desktop.yml](../.github/workflows/desktop.yml).
 Start in the repository's `desktop` directory so Cargo reads the portable CPU
 configuration.

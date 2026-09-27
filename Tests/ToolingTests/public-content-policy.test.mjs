@@ -26,6 +26,14 @@ test("publication policy catches personal context and conversation exports", () 
   assert.ok(scanText(transcript).includes("conversation-export"));
 });
 
+test("the reviewed compiler fixture remains subject to text privacy checks", () => {
+  const file = "desktop/tests/fixtures/path-privacy.cpp";
+  assert.deepEqual(scanEntry(file, Buffer.from("const char *synthetic = __FILE__;")), []);
+  const home = ["", "Users", "synthetic-person", "private.txt"].join("/");
+  assert.ok(scanEntry(file, Buffer.from(home)).includes("personal-home-path"));
+  assert.ok(scanEntry("desktop/tests/fixtures/unreviewed.cpp", Buffer.from("synthetic")).includes("unapproved-file-type"));
+});
+
 test("GitHub's public commit identity is allowed only in commit metadata", () => {
   for (const name of ["noreply", "support"]) {
     const address = [name, "github.com"].join("@");

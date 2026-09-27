@@ -19,7 +19,11 @@ ordinary shell settings from another local-model project cannot enable them.
 This is a build safeguard, not protection against someone modifying the source
 or distributing a different executable.
 
-Release compilation remaps private build paths. Windows also sets the
+Release compilation remaps private build paths. Windows native code uses
+clang-cl with source-macro remapping and Ninja; CI first compiles a synthetic
+narrow/wide `__FILE__` fixture in a directory containing spaces and rejects any
+retained private prefix. Rust mappings cover both Windows separator forms.
+Windows also sets the
 [linker's alternate symbol path](https://learn.microsoft.com/en-us/cpp/build/reference/pdbaltpath-use-alternate-pdb-path)
 to a filename without a host directory. Artifact checks still fail on any
 detected home or checkout path; diagnostics report only the class of finding,

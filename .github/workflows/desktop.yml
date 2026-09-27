@@ -47,6 +47,17 @@ jobs:
           rustc --version
           cmake --version
           clang --version
+      - name: Select Windows native compiler
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          clang-cl --version
+          ninja --version
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value 'CC=clang-cl'
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value 'CXX=clang-cl'
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value 'CMAKE_GENERATOR=Ninja'
+      - name: Verify native source-path remapping before compilation
+        run: node scripts/verify-native-path-remapping.mjs
       - name: Restore locked developer tools without install hooks
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Source policy and reviewed Linux backport

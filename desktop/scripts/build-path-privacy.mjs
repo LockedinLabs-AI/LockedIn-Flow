@@ -3,6 +3,45 @@ export function linkerPrivacyFlags(platform) {
   return platform === "win32" ? ["-C", "link-arg=/PDBALTPATH:%_PDB%"] : [];
 }
 
+export function sourcePathMappings(mappings, platform) {
+  const result = [];
+  for (const [from, to] of mappings) {
+    if (!from || !to || /[\x00-\x1f";]/.test(from + to))
+      throw new Error("Unsupported compiler path mapping.");
+    // Rust remapping is textual; Windows build tools use both separator forms.
+    const forms = new Set(platform === "win32" ? [from, from.replaceAll("\\", "/")] : [from]);
+    for (const form of forms) result.push([form, to]);
+  }
+  return result;
+}
+
+export function nativePrivacyFlags(mappings, platform) {
+  return sourcePathMappings(mappings, platform).map(([from, to]) =>
+    `${platform === "win32" ? "/clang:" : ""}-ffile-prefix-map=${from}=${to}`);
+}
+
+export function nativeCompilerEnvironment(environment, mappings, platform) {
+  const env = { ...environment };
+  const flags = nativePrivacyFlags(mappings, platform).map((flag) => `"${flag}"`).join(" ");
+  if (platform === "win32") {
+    // clang-cl retains the MSVC ABI while supporting source-macro remapping.
+    // Pass quoted flags directly to CMake, avoiding cc-rs whitespace splitting.
+    env.CC = "clang-cl";
+    env.CXX = "clang-cl";
+    env.CMAKE_GENERATOR = "Ninja";
+    env.CMAKE_C_FLAGS = [env.CMAKE_C_FLAGS, env.CFLAGS, flags].filter(Boolean).join(" ");
+    env.CMAKE_CXX_FLAGS = [env.CMAKE_CXX_FLAGS, env.CXXFLAGS, "/utf-8", flags].filter(Boolean).join(" ");
+  } else {
+    // Preserve the existing cc-rs flag layout on Unix; do not quote the option
+    // name itself, because cc-rs' default parser passes those quotes literally.
+    const unixFlags = sourcePathMappings(mappings, platform)
+      .map(([from, to]) => `-ffile-prefix-map="${from}"=${to}`).join(" ");
+    env.CFLAGS = [env.CFLAGS, unixFlags].filter(Boolean).join(" ");
+    env.CXXFLAGS = [env.CXXFLAGS, unixFlags].filter(Boolean).join(" ");
+  }
+  return env;
+}
+
 // Return classifications only. Raw paths and surrounding binary contents must
 // never become diagnostics in a public build log.
 export function privatePathFindings(binary, prefixes) {
