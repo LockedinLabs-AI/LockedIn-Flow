@@ -2,18 +2,26 @@ use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     Sample,
 };
-use lockedin_flow_core::{audio::CaptureBuffer, SAMPLE_RATE};
+use lockedin_flow_core::{
+    audio::{CaptureBuffer, CaptureProgress},
+    SAMPLE_RATE,
+};
 use rubato::{
     audioadapter::Adapter, audioadapter_buffers::direct::InterleavedSlice, Fft, FixedSync,
     Resampler,
 };
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 use zeroize::Zeroizing;
 
 pub struct Capture {
     stream: Option<cpal::Stream>,
     buffer: Arc<Mutex<CaptureBuffer>>,
     rate: u32,
+    started: Instant,
+    progress: CaptureProgress,
 }
 
 pub struct Captured {
@@ -60,16 +68,23 @@ impl Capture {
             stream: Some(stream),
             buffer,
             rate,
+            started: Instant::now(),
+            progress: CaptureProgress::default(),
         })
     }
 
-    pub fn status(&self) -> CaptureStatus {
+    pub fn status(&mut self) -> CaptureStatus {
         match self.buffer.lock() {
-            Ok(buffer) => CaptureStatus {
-                seconds: buffer.len() / self.rate as usize,
-                peak: buffer.peak,
-                stopped: buffer.full || buffer.interrupted,
-            },
+            Ok(mut buffer) => {
+                if !buffer.full && self.progress.stalled(buffer.len(), self.started.elapsed()) {
+                    buffer.interrupted = true;
+                }
+                CaptureStatus {
+                    seconds: buffer.len() / self.rate as usize,
+                    peak: buffer.peak,
+                    stopped: buffer.full || buffer.interrupted,
+                }
+            }
             Err(_) => CaptureStatus {
                 seconds: 0,
                 peak: 0.0,

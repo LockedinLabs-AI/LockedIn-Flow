@@ -30,6 +30,11 @@ overlapping recordings, and leaves the previous successful transcript visible
 until a new one completes. Recognition failure retains the captured audio for
 explicit retry; discard drops that audio without changing the clipboard. A
 device interruption transcribes the captured portion and labels it as partial.
+A monotonic watchdog closes streams that deliver no new samples for five
+seconds, including streams that never report an explicit driver error. It
+preserves any captured portion; an empty capture returns to Ready without
+discarding the previous transcript. An empty recognition result retains the
+audio for recovery instead of replacing that transcript with blank text.
 
 Raw device-rate audio is bounded to five minutes, downmixed, and resampled to
 16 kHz before recognition. The model loader verifies the bytes it actually

@@ -17,7 +17,7 @@ Do not use an unsigned test build as a production healthcare deployment.
 - Review before explicit Copy; no automatic clipboard replacement or typing.
 - Session vocabulary, including engineering terms and names with Unicode.
 - A bounded five-minute recording, partial-capture notice after an interruption,
-  and in-memory retry after a recognition error.
+  stalled-stream detection, and in-memory retry after a recognition error.
 - No application telemetry, hosted inference, updater, account, or inbound server.
 
 This port does not yet provide the Mac application's global shortcut, encrypted
@@ -107,6 +107,12 @@ tests capture-state recovery, runs real synthetic recognition with network
 access denied, and packages the app with its model, license notices, and
 CycloneDX build inventory. A successful CI run is not physical-microphone or
 supported-desktop acceptance.
+
+The developer-only `recognize_fixture` example accepts an optional repetition
+count from 1 to 16. It reuses one loaded model, compares every result against a
+synthetic expected-text fixture, and reports timing without printing transcripts.
+This checks repeated inference, not microphone hardware or a production latency
+guarantee. Do not use patient or other private recordings as test fixtures.
 
 Before a public binary release, record:
 

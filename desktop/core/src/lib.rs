@@ -66,6 +66,10 @@ impl Session {
             text.zeroize();
             return Err("The transcription result exceeded the safety limit.");
         }
+        if text.trim().is_empty() {
+            text.zeroize();
+            return Err("No speech was recognized. Your previous transcript is unchanged; retry or discard this recording.");
+        }
         self.transcript.zeroize();
         self.transcript = text;
         self.phase = Phase::Ready;
@@ -141,6 +145,23 @@ mod tests {
             session.stop().unwrap();
             assert!(session.complete(generation, text).is_err());
             assert!(session.transcript().is_empty());
+        }
+    }
+
+    #[test]
+    fn empty_recognition_never_erases_a_previous_result() {
+        for text in ["", " \n\t", "\u{2003}"] {
+            let mut session = Session::default();
+            session.phase = Phase::Ready;
+            let first = session.start().unwrap();
+            session.stop().unwrap();
+            session
+                .complete(first, "Synthetic previous result".into())
+                .unwrap();
+            let next = session.start().unwrap();
+            session.stop().unwrap();
+            assert!(session.complete(next, text.into()).is_err());
+            assert_eq!(session.transcript(), "Synthetic previous result");
         }
     }
 }

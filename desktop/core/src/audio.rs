@@ -1,6 +1,27 @@
 //! Bounded capture storage. A device error preserves the samples already captured.
 use crate::MAX_RECORDING_SECONDS;
+use std::time::Duration;
 use zeroize::Zeroize;
+
+/// A stream can stop delivering callbacks without reporting a device error.
+/// The adapter supplies monotonic elapsed time; this core policy is device-independent.
+#[derive(Default)]
+pub struct CaptureProgress {
+    samples: usize,
+    last_progress: Duration,
+}
+
+impl CaptureProgress {
+    pub const STALL_TIMEOUT: Duration = Duration::from_secs(5);
+
+    pub fn stalled(&mut self, samples: usize, elapsed: Duration) -> bool {
+        if samples > self.samples {
+            self.samples = samples;
+            self.last_progress = elapsed;
+        }
+        elapsed.saturating_sub(self.last_progress) >= Self::STALL_TIMEOUT
+    }
+}
 
 pub struct CaptureBuffer {
     samples: Vec<f32>,
@@ -112,5 +133,31 @@ mod tests {
             buffer.push_interleaved(&[0.1], channels, |v| v);
             assert!(buffer.interrupted);
         }
+    }
+
+    #[test]
+    fn stream_that_never_delivers_audio_times_out() {
+        let mut progress = CaptureProgress::default();
+        assert!(!progress.stalled(0, Duration::from_millis(4_999)));
+        assert!(progress.stalled(0, Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn new_samples_reset_the_stall_timeout_but_polling_does_not() {
+        let mut progress = CaptureProgress::default();
+        assert!(!progress.stalled(16_000, Duration::from_secs(1)));
+        assert!(!progress.stalled(16_000, Duration::from_secs(5)));
+        assert!(!progress.stalled(32_000, Duration::from_secs(5)));
+        assert!(!progress.stalled(32_000, Duration::from_secs(9)));
+        assert!(progress.stalled(32_000, Duration::from_secs(10)));
+    }
+
+    #[test]
+    fn active_stream_and_large_monotonic_gap_are_handled() {
+        let mut progress = CaptureProgress::default();
+        for second in 1..=MAX_RECORDING_SECONDS {
+            assert!(!progress.stalled(second * 16_000, Duration::from_secs(second as u64)));
+        }
+        assert!(progress.stalled(MAX_RECORDING_SECONDS * 16_000, Duration::from_secs(600)));
     }
 }

@@ -175,7 +175,7 @@ impl Worker {
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
             }
-            if let Some(capture) = &self.capture {
+            if let Some(capture) = &mut self.capture {
                 let status = capture.status();
                 if let Ok(mut view) = self.view.lock() {
                     view.seconds = status.seconds;
@@ -260,20 +260,36 @@ impl Worker {
 
     fn finish_capture(&mut self) -> Result<(), &'static str> {
         let generation = self.session.stop()?;
-        let capture = self
-            .capture
-            .take()
-            .ok_or("Microphone capture is unavailable.")?;
+        let Some(capture) = self.capture.take() else {
+            self.session.phase = if self.recovery.is_some() {
+                Phase::Recovery
+            } else {
+                Phase::Ready
+            };
+            return Err(
+                "Microphone capture is unavailable. Your previous transcript is unchanged.",
+            );
+        };
         match capture.stop() {
-            Ok(recording) => {
-                self.recovery = Some(recording);
-                self.transcribe(generation)
-            }
+            Ok(recording) => self.accept_recording(generation, recording),
             Err(error) => {
                 self.session.phase = Phase::Ready;
                 Err(error)
             }
         }
+    }
+
+    fn accept_recording(
+        &mut self,
+        generation: u64,
+        recording: Captured,
+    ) -> Result<(), &'static str> {
+        if recording.samples.is_empty() {
+            self.session.phase = Phase::Ready;
+            return Err("The microphone did not deliver audio. Check your input device and try again. Your previous transcript is unchanged.");
+        }
+        self.recovery = Some(recording);
+        self.transcribe(generation)
     }
 
     fn transcribe(&mut self, generation: u64) -> Result<(), &'static str> {
@@ -435,6 +451,62 @@ mod tests {
         assert!(worker.recovery.is_none());
         assert!(worker.clipboard.is_none());
         assert_eq!(worker.session.phase, Phase::Ready);
+    }
+
+    #[test]
+    fn missing_capture_does_not_leave_processing_stuck() {
+        let mut worker = worker(false);
+        worker.recovery = None;
+        worker.session.start().unwrap();
+        assert!(worker.finish_capture().is_err());
+        assert_eq!(worker.session.phase, Phase::Ready);
+        assert!(worker.capture.is_none());
+    }
+
+    #[test]
+    fn microphone_with_no_samples_returns_to_ready_without_erasing_text() {
+        let mut worker = worker(false);
+        let previous = worker.session.start().unwrap();
+        worker.session.stop().unwrap();
+        worker.transcribe(previous).unwrap();
+        let next = worker.session.start().unwrap();
+        worker.session.stop().unwrap();
+        let empty = Captured {
+            samples: Zeroizing::new(Vec::new()),
+            sample_rate: 16_000,
+            interrupted: true,
+            limit_reached: false,
+        };
+        assert!(worker.accept_recording(next, empty).is_err());
+        assert_eq!(worker.session.phase, Phase::Ready);
+        assert_eq!(worker.session.transcript(), "Synthetic kubectl example.");
+        assert!(worker.recovery.is_none());
+        assert!(worker.clipboard.is_none());
+    }
+
+    #[test]
+    fn empty_engine_result_keeps_both_audio_and_previous_transcript() {
+        struct EmptyRecognizer;
+        impl Recognizer for EmptyRecognizer {
+            fn recognize(&self, _: &[f32]) -> Result<String, &'static str> {
+                Ok(" \n".into())
+            }
+        }
+        let mut worker = worker(false);
+        let first = worker.session.start().unwrap();
+        worker.session.stop().unwrap();
+        worker
+            .session
+            .complete(first, "Synthetic previous result.".into())
+            .unwrap();
+        worker.engine = Some(Box::new(EmptyRecognizer));
+        let next = worker.session.start().unwrap();
+        worker.session.stop().unwrap();
+        assert!(worker.transcribe(next).is_err());
+        assert_eq!(worker.session.phase, Phase::Recovery);
+        assert_eq!(worker.session.transcript(), "Synthetic previous result.");
+        assert_eq!(worker.recovery.as_ref().unwrap().samples.len(), 16_000);
+        assert!(worker.clipboard.is_none());
     }
 
     #[test]
