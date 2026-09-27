@@ -5,7 +5,13 @@ import { open } from "node:fs/promises";
 
 export const limits = Object.freeze({ package: 512 * 1024 ** 2, payload: 768 * 1024 ** 2, file: 256 * 1024 ** 2, entries: 10000, metadata: 1024 * 1024 });
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const fail = () => { throw new Error("Package evidence rejected; input details withheld."); };
+class EvidenceFailure extends Error {
+  constructor(category) {
+    super("Package evidence rejected; input details withheld.");
+    this.category = category;
+  }
+}
+const fail = (category = "archive-header") => { throw new EvidenceFailure(category); };
 const names = new Set(["lockedin-flow", "locked-in-flow", "lockedin-flow-desktop", "locked-in-flow-desktop"]);
 const required = ["SBOM.cdx.json", "THIRD-PARTY-NOTICES.txt", "LICENSE.txt", "MODEL.json"];
 
@@ -46,7 +52,7 @@ function archivePath(value, directory = false) {
   if (directory && value.endsWith("/")) value = value.slice(0, -1);
   if (directory && (value === "" || value === ".")) return "";
   if (value.length > 256 || !/^[A-Za-z0-9_+.,@() /-]+$/.test(value)
-      || value.split("/").some((part) => !part || part === "." || part === "..")) fail();
+      || value.split("/").some((part) => !part || part === "." || part === "..")) fail("archive-path");
   return value;
 }
 
@@ -69,7 +75,7 @@ function octal(bytes) {
 // Original USTAR or the pinned producer's ordinary GNU headers only. No
 // normalization, extraction, GNU/PAX extensions, links, devices or sparse entries.
 export function inspectTar(bytes, expected) {
-  if (!Buffer.isBuffer(bytes) || bytes.length > limits.payload || bytes.length % 512) fail();
+  if (!Buffer.isBuffer(bytes) || bytes.length > limits.payload || bytes.length % 512) fail("archive-framing");
   const entries = new Map();
   let cursor = 0;
   let ended = false;
@@ -77,7 +83,7 @@ export function inspectTar(bytes, expected) {
     const header = bytes.subarray(cursor, cursor + 512);
     cursor += 512;
     if (header.every((byte) => byte === 0)) {
-      if (bytes.length - cursor < 512 || bytes.subarray(cursor).some((byte) => byte !== 0)) fail();
+      if (bytes.length - cursor < 512 || bytes.subarray(cursor).some((byte) => byte !== 0)) fail("archive-framing");
       ended = true;
       break;
     }
@@ -95,25 +101,25 @@ export function inspectTar(bytes, expected) {
       octal(header.subarray(136, 148));
     }
     const checksum = header.reduce((sum, byte, index) => sum + (index >= 148 && index < 156 ? 32 : byte), 0);
-    if (checksum !== octal(header.subarray(148, 156))) fail();
+    if (checksum !== octal(header.subarray(148, 156))) fail("archive-checksum");
     const type = header[156] === 0 ? "0" : String.fromCharCode(header[156]);
-    if (!["0", "2", "5"].includes(type)) fail();
+    if (!["0", "2", "5"].includes(type)) fail("archive-entry-type");
     const prefix = gnu ? "" : field(header, 345, 155);
     const name = archivePath((prefix ? prefix + "/" : "") + field(header, 0, 100), type === "5");
     const size = octal(header.subarray(124, 136));
     const mode = octal(header.subarray(100, 108));
     // Deterministic mode contains permission bits only, not Unix file-type bits.
     if (gnu && (type === "5" ? mode !== 0o755 : ![0o644, 0o755].includes(mode))) fail();
-    if (size > limits.file || (type !== "0" && size !== 0) || (mode & ~0o777) || cursor + Math.ceil(size / 512) * 512 > bytes.length) fail();
-    if (entries.has(name)) fail();
+    if (size > limits.file || (type !== "0" && size !== 0) || (mode & ~0o777) || cursor + Math.ceil(size / 512) * 512 > bytes.length) fail("archive-bounds");
+    if (entries.has(name)) fail("archive-path");
     const data = bytes.subarray(cursor, cursor + size);
-    if (bytes.subarray(cursor + size, cursor + Math.ceil(size / 512) * 512).some((byte) => byte !== 0)) fail();
+    if (bytes.subarray(cursor + size, cursor + Math.ceil(size / 512) * 512).some((byte) => byte !== 0)) fail("archive-framing");
     cursor += Math.ceil(size / 512) * 512;
     const entry = { pathSha256: digest(name), type: { "0": "file", "2": "symlink", "5": "directory" }[type], mode, bytes: size };
     if (type === "2") {
       // Conservative policy: reject all symlinks until a native, format-specific
       // link-resolution contract is tested. Never dereference an archive link.
-      fail();
+      fail("archive-entry-type");
     }
     if (type === "0") {
       entry.sha256 = digest(data);
@@ -122,28 +128,28 @@ export function inspectTar(bytes, expected) {
     }
     entries.set(name, entry);
   }
-  if (!ended) fail();
+  if (!ended) fail("archive-framing");
   for (const name of entries.keys()) {
     const segments = name.split("/");
     while (segments.length > 1) {
       segments.pop();
       const parent = entries.get(segments.join("/"));
-      if (parent && parent.type !== "directory") fail();
+      if (parent && parent.type !== "directory") fail("archive-path");
     }
   }
   const matches = (suffix) => [...entries].filter(([name, entry]) => entry.type === "file" && name.endsWith(suffix));
   const models = matches("/models/ggml-base.en.bin");
-  if (models.length !== 1 || models[0][1].sha256 !== expected.model) fail();
+  if (models.length !== 1 || models[0][1].sha256 !== expected.model) fail("resource-validation");
   const resourceRoot = models[0][0].slice(0, -"/models/ggml-base.en.bin".length);
   for (const label of required) {
     const found = matches("/compliance/" + label);
     if (found.length !== 1 || found[0][0] !== resourceRoot + "/compliance/" + label
-        || found[0][1].sha256 !== expected[label]) fail();
+        || found[0][1].sha256 !== expected[label]) fail("resource-validation");
     found[0][1].verifiedResource = label;
   }
   models[0][1].verifiedResource = "pinned-model";
   const app = entries.get("usr/bin/lockedin-flow-desktop");
-  if (!app?.elf || app.sha256 !== expected.application) fail();
+  if (!app?.elf || app.sha256 !== expected.application) fail("resource-validation");
   app.verifiedResource = "application";
   return [...entries.values()].sort((a, b) => a.pathSha256.localeCompare(b.pathSha256));
 }
@@ -188,13 +194,16 @@ export function inspectPackage(format, snapshot, bytes, expected, run = standard
     return { ...result, reason: "appimage-payload-reader-not-implemented", metadata: null, files: null };
   }
   if (format === "deb" ? bytes.subarray(0, 8).toString("ascii") !== "!<arch>\n" : !bytes.subarray(0, 4).equals(Buffer.from([237, 171, 238, 219]))) fail();
+  let failureStage = "identity-query";
   try {
     let identity, dependencies, tar;
     if (format === "deb") {
       identity = ["Package", "Version", "Architecture"].map((field) => run("/usr/bin/dpkg-deb", ["--field", snapshot, field]).toString("utf8").trimEnd()).join("\n");
+      failureStage = "dependency-query";
       dependencies = ["Depends", "Pre-Depends"].map((field) => run("/usr/bin/dpkg-deb", ["--field", snapshot, field]).toString("utf8").trimEnd()).join("\n");
       // Validate every original decompressed byte. A rewriting tool can silently
       // discard trailing archives/data and cannot establish full consumption.
+      failureStage = "payload-read";
       tar = run("/usr/bin/dpkg-deb", ["--fsys-tarfile", snapshot], undefined, limits.payload);
     } else {
       identity = run("/usr/bin/rpm", ["--noplugins", "-qp", "--queryformat", "%{NAME}\n%{VERSION}-%{RELEASE}\n%{ARCH}\n", snapshot]).toString("utf8");
@@ -203,8 +212,15 @@ export function inspectPackage(format, snapshot, bytes, expected, run = standard
       // consumed. Keep it unverified until an original-format reader is reviewed.
       return { ...result, reason: "rpm-original-payload-validation-unavailable", metadata: packageMetadata(format, identity, dependencies), files: null };
     }
-    return { ...result, status: "payload-inspected", metadata: packageMetadata(format, identity, dependencies), files: inspectTar(tar, expected) };
-  } catch {
-    return { ...result, reason: "tool-or-payload-validation-failed", metadata: null, files: null };
+    failureStage = "metadata-validation";
+    const metadata = packageMetadata(format, identity, dependencies);
+    failureStage = "archive-validation";
+    return { ...result, status: "payload-inspected", metadata, files: inspectTar(tar, expected) };
+  } catch (error) {
+    // Only internally constructed validation failures can refine the archive
+    // category. Never copy properties/messages from an external tool exception.
+    if (failureStage === "archive-validation" && error instanceof EvidenceFailure) failureStage = error.category;
+    return { ...result, reason: "tool-or-payload-validation-failed", metadata: null, files: null,
+      ...(format === "deb" ? { failureStage } : {}) };
   }
 }

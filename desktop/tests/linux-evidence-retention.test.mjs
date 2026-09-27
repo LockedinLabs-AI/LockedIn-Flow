@@ -60,6 +60,32 @@ test("exit 1, unexpected exits and a false exit 0 never authorize a partial or s
   }
 });
 
+test("DEB diagnostic enum round-trips only on unverified DEB failures; historical reports remain valid", () => {
+  const make = () => {
+    const report = fixture();
+    Object.assign(report.packages[0], { status: "unverified", reason: "tool-or-payload-validation-failed", metadata: null, files: null });
+    return report;
+  };
+  assert.equal(reviewEnvelope(encode(make()), context()).evidence.packages[0].status, "unverified");
+  const stages = ["identity-query", "dependency-query", "payload-read", "metadata-validation", "archive-validation", "archive-header", "archive-bounds", "archive-framing", "archive-entry-type", "archive-checksum", "archive-path", "resource-validation"];
+  for (const stage of stages) {
+    const report = make(); report.packages[0].failureStage = stage;
+    const retained = reviewEnvelope(encode(report), context());
+    assert.deepEqual(retained.evidence, report);
+    assert.equal(retained.disposition, "incomplete-not-release-acceptance");
+    reject(report, { ...context(), inspectorExitCode: 0 });
+  }
+  for (const value of ["raw private diagnostics", "/synthetic/private-path", "approved", "", null, 42, {}, ["archive-header"]]) {
+    const report = make(); report.packages[0].failureStage = value; reject(report);
+  }
+  for (const index of [0, 1, 2]) {
+    const report = fixture(); report.packages[index].failureStage = "archive-header"; reject(report);
+  }
+  const missing = make();
+  missing.packages[0] = { format: "deb", status: "unverified", reason: "package-input-unavailable-or-invalid", licenseReview: "unresolved", failureStage: "archive-header" };
+  reject(missing);
+});
+
 test("rejects stale source and invalid source, event, PR-head and run identities", () => {
   const changes = [
     { checkoutRevision: "c".repeat(40) }, { githubRevision: "c".repeat(40) }, { proposedHeadRevision: null },

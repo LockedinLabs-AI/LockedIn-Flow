@@ -346,3 +346,42 @@ test("installed bsdtar converts a synthetic stream without hiding unsafe names",
   const normalized = standardTool("/usr/bin/bsdtar", ["-cPf", "-", "--format=ustar", "@-"], cpio, limits.payload);
   assert.deepEqual(inspectTar(normalized, expected), inspectTar(tar(), expected));
 });
+
+test("DEB failure stages distinguish tools and validation without exposing exception content", () => {
+  const inspect = ({ failure = -1, version = "0.5.0-alpha.1", stream = tar(), resources = expected } = {}) => {
+    let call = 0;
+    const values = ["locked-in-flow", version, "amd64", "libc6", ""];
+    return inspectPackage("deb", "/synthetic/input.deb", packageBytes("deb"), resources, () => {
+      const index = call++;
+      if (index === failure) throw Object.assign(new Error("synthetic-private-diagnostics"), { category: "synthetic-private-category" });
+      return index < 5 ? Buffer.from(values[index] + "\n") : stream;
+    });
+  };
+  for (const [failure, stage] of [[0, "identity-query"], [1, "identity-query"], [2, "identity-query"], [3, "dependency-query"], [4, "dependency-query"], [5, "payload-read"]]) {
+    const result = inspect({ failure });
+    assert.equal(result.failureStage, stage);
+    assert.equal(result.status, "unverified");
+    assert.equal(result.metadata, null);
+    assert.equal(result.files, null);
+    assert.doesNotMatch(JSON.stringify(result), /synthetic-private/);
+  }
+  const badChecksum = tar(); badChecksum[20] ^= 1;
+  const badHeader = tar(); badHeader[257] = 0;
+  for (const [options, stage] of [
+    [{ version: "not-a-version" }, "metadata-validation"],
+    [{ stream: Buffer.concat([tar(), tar()]) }, "archive-framing"],
+    [{ stream: badChecksum }, "archive-checksum"],
+    [{ stream: badHeader }, "archive-header"],
+    [{ stream: tar([...payload, ["../escape", "x"]]) }, "archive-path"],
+    [{ stream: tar([...payload, ["usr/link", "", { type: "2", link: "bin/example" }]]) }, "archive-entry-type"],
+    [{ stream: Buffer.concat([header("usr/huge", limits.file + 1), Buffer.alloc(1024)]) }, "archive-bounds"],
+    [{ resources: { ...expected, application: "0".repeat(64) } }, "resource-validation"],
+  ]) {
+    const result = inspect(options);
+    assert.equal(result.failureStage, stage);
+    assert.equal(result.reason, "tool-or-payload-validation-failed");
+    assert.equal(result.status, "unverified");
+  }
+  assert.equal(inspect().status, "payload-inspected");
+  assert.equal(Object.hasOwn(inspect(), "failureStage"), false);
+});
