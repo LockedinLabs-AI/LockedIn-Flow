@@ -38,7 +38,8 @@ only the bundled model name and digest, never an arbitrary path from the UI.
 
 The renderer can invoke only `get_status`, `perform_action`, and
 `set_vocabulary`, scoped to the local main window. No remote origins receive
-capabilities. A restrictive content policy, no remote fonts/assets, no dynamic
+capabilities. Navigation is limited to the platform's bundled application
+origin, not arbitrary websites or local files. A restrictive content policy, no remote fonts/assets, no dynamic
 HTML insertion, no plugins exposing shell/filesystem/HTTP, and fixed error
 messages reduce the bridge's attack surface.
 

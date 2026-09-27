@@ -92,6 +92,9 @@ jobs:
           $voice.Speak([IO.File]::ReadAllText((Join-Path $PWD 'tests/fixtures/smoke.txt')))
           $voice.Dispose()
           $executable = (Resolve-Path 'target/debug/examples/recognize_fixture.exe').Path
+          # The firewall on this ephemeral runner must enforce the per-executable rule.
+          Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True
+          if ((Get-NetFirewallProfile | Where-Object { -not $_.Enabled }).Count -ne 0) { throw 'Network-denial policy is not active.' }
           $rule = New-NetFirewallRule -DisplayName 'LockedIn Flow CI offline speech' -Direction Outbound -Program $executable -Action Block
           try {
             & $executable app/resources/models/ggml-base.en.bin target/synthetic/input.wav tests/fixtures/smoke.txt
@@ -103,6 +106,8 @@ jobs:
       - name: Build Linux standard packages
         if: runner.os == 'Linux'
         run: npm run build -- --ci --bundles deb,rpm,appimage
+      - name: Verify native artifact provenance and build-path privacy
+        run: node scripts/verify-artifact.mjs
       - name: Check Linux packaged payload
         if: runner.os == 'Linux'
         run: |

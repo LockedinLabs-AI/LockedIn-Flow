@@ -20,6 +20,19 @@ fn own_window(window: &tauri::WebviewWindow) -> Result<(), &'static str> {
     }
 }
 
+fn allowed_navigation(url: &tauri::Url) -> bool {
+    let (scheme, host) = if cfg!(target_os = "windows") {
+        ("http", "tauri.localhost")
+    } else {
+        ("tauri", "localhost")
+    };
+    url.scheme() == scheme
+        && url.host_str() == Some(host)
+        && url.port().is_none()
+        && url.username().is_empty()
+        && url.password().is_none()
+}
+
 #[tauri::command]
 fn get_status(
     window: tauri::WebviewWindow,
@@ -86,6 +99,16 @@ fn main() {
             let resources = app.path().resource_dir()?;
             let (sender, view) = worker::spawn(resources)?;
             app.manage(Services { sender, view });
+            let configuration = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|window| window.label == "main")
+                .ok_or("The main application window is not configured.")?;
+            tauri::WebviewWindowBuilder::from_config(app, configuration)?
+                .on_navigation(allowed_navigation)
+                .build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -98,5 +121,36 @@ fn main() {
         // Fixed, content-free failure. Never include transcript, device, or filesystem details.
         eprintln!("LockedIn Flow could not start its desktop interface.");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod navigation_tests {
+    use super::*;
+
+    #[test]
+    fn navigation_is_limited_to_the_platforms_bundled_app_origin() {
+        let origin = if cfg!(target_os = "windows") {
+            "http://tauri.localhost"
+        } else {
+            "tauri://localhost"
+        };
+        for suffix in ["", "/", "/index.html", "/index.html#transcript"] {
+            assert!(allowed_navigation(
+                &tauri::Url::parse(&format!("{origin}{suffix}")).unwrap()
+            ));
+        }
+        for url in [
+            "https://example.com",
+            "http://localhost",
+            "http://tauri.localhost.example",
+            "tauri://localhost.example",
+            "tauri://user@localhost",
+            "tauri://localhost:1234",
+            "file:///synthetic.txt",
+            "data:text/plain,synthetic",
+        ] {
+            assert!(!allowed_navigation(&tauri::Url::parse(url).unwrap()));
+        }
     }
 }

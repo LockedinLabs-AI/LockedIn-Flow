@@ -161,11 +161,27 @@ const sourceState = run("git", [
 ]).trim()
   ? "modified"
   : "clean";
+// RFC 4122 URL-namespace UUIDv5: stable for the reviewed source/target/lockfile.
+const identity = createHash("sha1")
+  .update(Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex"))
+  .update(
+    `https://github.com/LockedinLabs-AI/LockedIn-Flow/tree/${revision}/${target}/${hash(lock)}`,
+  )
+  .digest()
+  .subarray(0, 16);
+identity[6] = (identity[6] & 0x0f) | 0x50;
+identity[8] = (identity[8] & 0x3f) | 0x80;
+const identifier = identity
+  .toString("hex")
+  .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5");
 const sbom = {
+  $schema: "http://cyclonedx.org/schema/bom-1.6.schema.json",
   bomFormat: "CycloneDX",
   specVersion: "1.6",
+  serialNumber: `urn:uuid:${identifier}`,
   version: 1,
   metadata: {
+    timestamp: run("git", ["show", "-s", "--format=%cI", "HEAD"]).trim(),
     component: {
       type: "application",
       "bom-ref": "lockedin-flow",
@@ -188,9 +204,12 @@ const sbom = {
   dependencies: [
     {
       ref: "lockedin-flow",
-      dependsOn: packages
-        .filter((pkg) => pkg.name.startsWith("lockedin-flow-"))
-        .map(reference),
+      dependsOn: [
+        model.id,
+        ...packages
+          .filter((pkg) => pkg.name.startsWith("lockedin-flow-"))
+          .map(reference),
+      ],
     },
     ...packages.map((pkg) => ({
       ref: reference(pkg),

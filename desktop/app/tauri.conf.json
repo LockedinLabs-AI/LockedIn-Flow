@@ -9,6 +9,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "LockedIn Flow",
         "width": 1000,
         "height": 760,

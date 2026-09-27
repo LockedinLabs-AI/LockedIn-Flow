@@ -21,6 +21,13 @@ encryption, appropriate dump policies, screen-lock controls, and an approved
 clipboard/destination configuration. Clearing the transcript does not erase a
 previously copied clipboard item. The app never reads existing clipboard data.
 
+The explicit Copy action requests Windows' exclusion from cloud clipboard and
+history processing, and Linux's history-exclusion convention. These requests
+are not access controls against third-party clipboard readers. Manual keyboard
+copy through the OS webview is outside this adapter; enterprise clipboard policy
+is still necessary. The native Swift Mac app has its separate local-only
+pasteboard control.
+
 The review-before-copy workflow is intentional. No focused-field detection is
 needed to start a recording, so the Mac product's historical target-field error
 cannot block this path. The app does not inspect passwords in other windows or
@@ -52,6 +59,9 @@ source comparison and optimized Linux regression. See the
 [backport provenance](vendor/glib/LOCKEDIN-PATCH.md). A path dependency may not
 be assessed by a version-only advisory scanner, so both checks are mandatory;
 an empty scanner report alone does not validate the backport.
+The source verifier also queries the upstream crate's current OSV advisories;
+any finding other than the exact backported defect fails that gate. Thus the
+path override does not hide future advisories on the upstream crate.
 
 **RUSTSEC-2024-0370:** `proc-macro-error` 1.0.4 is unmaintained and enters through
 the GTK3 build-time macro stack. It is not a speech network service, but this

@@ -46,6 +46,11 @@ test("the native bridge has only three window-scoped commands", () => {
   assert.ok(csp.includes("form-action 'none'"));
   assert.doesNotMatch(csp, /https:|unsafe-eval|unsafe-inline|\*/);
   assert.equal(config.app.windows[0].devtools, false);
+  assert.equal(config.app.windows[0].create, false);
+  assert.match(
+    read("app/src/main.rs"),
+    /\.on_navigation\(allowed_navigation\)/,
+  );
 });
 
 test("the model allowlist is pinned and matches the native verifier", () => {
@@ -114,4 +119,21 @@ test("build tools have no automatic install hooks", () => {
     "GGML_F16C",
   ])
     assert.ok(cpu.includes(`${flag} = { value = "OFF", force = true }`));
+});
+
+test("explicit clipboard writes request platform privacy exclusions", () => {
+  const worker = read("app/src/worker.rs");
+  assert.match(
+    worker,
+    /copy_with_privacy_hints\(clipboard, self\.session\.transcript\(\)\)/,
+  );
+  assert.doesNotMatch(worker, /\.set_text\(/);
+  assert.match(
+    worker,
+    /use arboard::SetExtWindows;\s*setter\.exclude_from_monitoring\(\)/,
+  );
+  assert.match(
+    worker,
+    /use arboard::SetExtLinux;\s*setter\.exclude_from_history\(\)/,
+  );
 });

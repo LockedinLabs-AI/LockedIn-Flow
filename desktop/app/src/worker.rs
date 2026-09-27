@@ -247,9 +247,9 @@ impl Worker {
                     })?);
                 }
                 if let Some(clipboard) = &mut self.clipboard {
-                    clipboard.set_text(self.session.transcript()).map_err(|_| {
-                        "The transcript could not be copied. Select and copy it manually."
-                    })?;
+                    copy_with_privacy_hints(clipboard, self.session.transcript()).map_err(
+                        |_| "The transcript could not be copied. Select and copy it manually.",
+                    )?;
                 }
                 self.update("Copied. Your destination app and clipboard manager control any further sharing.");
             }
@@ -309,6 +309,30 @@ impl Worker {
             }
         }
     }
+}
+
+fn copy_with_privacy_hints(
+    clipboard: &mut arboard::Clipboard,
+    text: &str,
+) -> Result<(), arboard::Error> {
+    let setter = clipboard.set();
+    #[cfg(target_os = "windows")]
+    let setter = {
+        use arboard::SetExtWindows;
+        setter.exclude_from_monitoring()
+    };
+    #[cfg(target_os = "linux")]
+    let setter = {
+        use arboard::SetExtLinux;
+        setter.exclude_from_history()
+    };
+    #[cfg(target_os = "macos")]
+    let setter = {
+        use arboard::SetExtApple;
+        setter.exclude_from_history()
+    };
+    // These OS/desktop conventions are not enforcement against unrelated clipboard clients.
+    setter.text(text)
 }
 
 #[cfg(test)]

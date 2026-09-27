@@ -6,6 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { archiveExtraction } from "./build-platform.mjs";
+import { queryCrateAdvisories } from "../../scripts/lib/dependency-advisories.mjs";
+import { unresolvedGlibAdvisories } from "./backport-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const digest =
@@ -88,6 +90,17 @@ try {
   }
   process.stdout.write(
     `Verified ${expected.length} upstream files; only the two-line security backport differs.\n`,
+  );
+  // Cargo's registry scanner does not cover this path dependency. Check its
+  // upstream identity too; only the fix verified above may be resolved locally.
+  const advisories = await queryCrateAdvisories("glib", "0.18.5");
+  const unresolved = unresolvedGlibAdvisories(advisories);
+  if (unresolved.length)
+    throw new Error(
+      `Additional GLib advisory requires review: ${unresolved.join(", ")}`,
+    );
+  process.stdout.write(
+    "Upstream GLib advisories checked; no additional unresolved advisory.\n",
   );
 } finally {
   await rm(temporary, { recursive: true, force: true });
