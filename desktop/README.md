@@ -78,6 +78,12 @@ Packages appear under `desktop/target/release/bundle`. Test packages are
 unsigned: do not tell users to disable SmartScreen, Gatekeeper, or managed
 endpoint policy. Public downloads require the release gates below.
 
+MSI uses numeric installer version `0.5.0.1` for application preview
+`0.5.0-alpha.1`, with a pinned upgrade code. Windows Installer compares only the
+first three product-version fields for upgrades; do not assume a fourth-field
+change provides upgrade ordering. The first production package must advance
+that three-field version and pass upgrade/downgrade acceptance.
+
 ## Enterprise terminology
 
 Open **Workspace terminology** and enter one correction per line:

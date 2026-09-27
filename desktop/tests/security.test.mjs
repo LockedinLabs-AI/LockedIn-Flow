@@ -20,6 +20,11 @@ test("all installer identities use the actual product and publisher", () => {
     "appimage",
   ]);
   assert.equal(config.bundle.windows.allowDowngrades, false);
+  assert.equal(config.bundle.windows.wix.version, "0.5.0.1");
+  assert.equal(
+    config.bundle.windows.wix.upgradeCode,
+    "c010de70-43e8-51b6-a898-a970f9133c31",
+  );
 });
 
 test("Windows installation does not download WebView2 on the endpoint", () => {
