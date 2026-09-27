@@ -44,7 +44,7 @@ attest the final signed package. The source provisioning utility is not itself a
 redistribution license.
 
 Production signing and notarization credentials are not part of this public
-repository. `scripts/package-community-app.sh` creates an ad-hoc signed local
+repository. `scripts/package-app.sh` creates an ad-hoc signed local
 bundle for evaluation; it is not an official release artifact.
 `scripts/package-evaluation-pkg.sh` wraps that bundle in an unsigned, no-script
 component package so the eventual MDM installation shape can be tested. It is
@@ -92,6 +92,12 @@ the rules are active. Repository publication does not authorize publishing an
 unsigned application or model artifact.
 
 ## Versioning
+
+Public tag creation is restricted. Before the first official release, configure
+a repository-scoped release identity for the approved artifact workflow; do not
+open tag creation to general-purpose developer credentials. Contributor work
+arrives through public forks, while dependency-update automation retains its
+existing upstream branch access.
 
 The project uses semantic versions and an incrementing macOS build number. Every
 official release tag is immutable and cryptographically signed. A changelog
