@@ -61,10 +61,15 @@ try { Assert-Payload $nsisDirectory } finally {
 Write-Output 'NSIS installation, branding, resource integrity, and removal passed.'
 
 # Standard Windows Installer options. No auto-launch or forced restart.
+# Keep the NSIS directory preference intact: MSI must honor the explicit
+# administrator destination even after another installer format was removed.
 $msiPath = $msi[0].FullName
 $installed = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$msiPath`" /qn /norestart INSTALLDIR=`"$msiDirectory`"" -Wait -PassThru
 if ($installed.ExitCode -ne 0) { throw 'MSI installation did not complete without a restart.' }
-try { Assert-Payload $msiDirectory } finally {
+try {
+    Assert-Payload $msiDirectory
+    Assert-Removed $nsisDirectory
+} finally {
     $removed = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/x `"$msiPath`" /qn /norestart" -Wait -PassThru
     if ($removed.ExitCode -ne 0) { throw 'MSI removal did not complete without a restart.' }
     Assert-Removed $msiDirectory

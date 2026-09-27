@@ -44,6 +44,14 @@ test("GitHub's public commit identity is allowed only in commit metadata", () =>
     .includes("unreviewed-contact-address"));
 });
 
+test("the reviewed installer fragment still rejects private content", () => {
+  const file = "desktop/app/windows/install-directory.wxs";
+  assert.deepEqual(scanEntry(file, Buffer.from('<Wix><Fragment /></Wix>')), []);
+  const home = ["", "Users", "synthetic-person", "private.txt"].join("/");
+  assert.ok(scanEntry(file, Buffer.from(home)).includes("personal-home-path"));
+  assert.ok(scanEntry("desktop/app/windows/unreviewed.wxs", Buffer.from("synthetic")).includes("unapproved-file-type"));
+});
+
 test("publication media requires exact reviewed bytes and rejects embedded metadata", () => {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   const chunk = (type) => Buffer.concat([Buffer.alloc(4), Buffer.from(type), Buffer.alloc(4)]);

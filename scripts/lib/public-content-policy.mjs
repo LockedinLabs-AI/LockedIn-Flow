@@ -72,6 +72,7 @@ export function scanEntry(file, bytes, { mode = "100644", media = {} } = {}) {
     }
   } else if (rootFiles.has(file) || textExtensions.has(extension)
       || file === "desktop/tests/fixtures/path-privacy.cpp"
+      || file === "desktop/app/windows/install-directory.wxs"
       || (parts[0] === "desktop" && [".rs", ".toml", ".lock", ".html", ".css", ".js", ".ps1"].includes(extension))
       || ["LICENSE", "NOTICE", "CODEOWNERS"].includes(basename)) {
     if (bytes.includes(0)) rules.push("binary-in-text-file");

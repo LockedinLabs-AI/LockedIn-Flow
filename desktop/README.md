@@ -122,6 +122,16 @@ access. MSI uses [standard Windows Installer quiet/no-restart options](https://l
 its machine-wide deployment requires administrator rights, while NSIS defaults
 to a per-user install.
 
+For managed MSI deployments, supply an administrator-controlled `INSTALLDIR`
+on installation and upgrades. The narrow [WiX fragment](app/windows/install-directory.wxs)
+preserves that explicit destination across the upstream installer's remembered-path
+lookup, including a directory retained after NSIS removal. It only sets installer
+properties; it does not execute a script or change registry permissions. CI leaves
+the NSIS preference intact and verifies that MSI uses the requested destination
+without restoring payload into the former per-user folder. In-place changes
+between installer formats and managed upgrade/rollback acceptance remain release
+gates; do not deploy both formats side by side.
+
 The developer-only `recognize_fixture` example accepts an optional repetition
 count from 1 to 16. It reuses one loaded model, compares every result against a
 synthetic expected-text fixture, and reports timing without printing transcripts.

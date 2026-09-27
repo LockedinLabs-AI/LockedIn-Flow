@@ -48,7 +48,9 @@
       "allowDowngrades": false,
       "wix": {
         "version": "0.5.0.1",
-        "upgradeCode": "c010de70-43e8-51b6-a898-a970f9133c31"
+        "upgradeCode": "c010de70-43e8-51b6-a898-a970f9133c31",
+        "fragmentPaths": ["windows/install-directory.wxs"],
+        "componentGroupRefs": ["LockedInInstallDirectoryPolicy"]
       },
       "webviewInstallMode": { "type": "offlineInstaller", "silent": true },
       "nsis": { "installMode": "currentUser", "displayLanguageSelector": false }
