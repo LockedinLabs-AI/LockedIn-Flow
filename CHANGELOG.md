@@ -6,6 +6,15 @@ evidence are approved.
 
 ## [Unreleased]
 
+### Added
+
+- Added an evaluation-stage Windows/Linux desktop workspace with a real CPU
+  speech engine, bundled verified model, explicit Copy, session terminology,
+  and bounded capture with in-memory recovery. The native Mac app is unchanged.
+- Added native Windows/Linux installer checks, a traceable GLib safety backport,
+  dependency inventory and license notices, and documented supported-platform
+  acceptance gates. Signed public Windows/Linux downloads are not yet available.
+
 ### Changed
 
 - Added an in-app speech-model setup guide with separate source-build and

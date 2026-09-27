@@ -82,6 +82,11 @@ see [Dependency and model licenses](docs/model-licenses.md).
 
 ## Choose your path
 
+Windows and Linux support is being built as a separate, real offline desktop
+port with standard EXE/MSI and DEB/RPM/AppImage packaging. See the
+[desktop source-evaluation guide](desktop/README.md) for its capabilities,
+installation targets, and release gates. It is not yet a signed public download.
+
 | Path | Intended use | Delivery | Status |
 | --- | --- | --- | --- |
 | LockedIn Flow download | Individual macOS use | Free signed and notarized download | Pending the release gates above |

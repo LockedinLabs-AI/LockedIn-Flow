@@ -1,0 +1,8 @@
+# Reproducible CPU baseline. Do not specialize distributed binaries for the CI host.
+[env]
+GGML_NATIVE = { value = "OFF", force = true }
+GGML_AVX = { value = "OFF", force = true }
+GGML_AVX2 = { value = "OFF", force = true }
+GGML_AVX512 = { value = "OFF", force = true }
+GGML_FMA = { value = "OFF", force = true }
+GGML_F16C = { value = "OFF", force = true }

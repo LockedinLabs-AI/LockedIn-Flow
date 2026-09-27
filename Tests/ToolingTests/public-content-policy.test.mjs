@@ -54,4 +54,6 @@ test("publication media requires exact reviewed bytes and rejects embedded metad
 test("documentation links resolve relative paths and ignore external services", () => {
   assert.deepEqual(localLinks("docs/start.md", "[Guide](../README.md#start) [Web](https://example.com)"), ["README.md"]);
   assert.deepEqual(localLinks("README.md", '<img src="docs/images/example.png">'), ["docs/images/example.png"]);
+  assert.deepEqual(localLinks("desktop/vendor/glib/README.md", "[Variant](struct@Variant)"), []);
+  assert.deepEqual(localLinks("README.md", "[Variant](struct@Variant)"), ["struct@Variant"]);
 });

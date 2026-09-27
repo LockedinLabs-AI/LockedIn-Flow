@@ -9,7 +9,7 @@ const rootFiles = new Set([
 ]);
 const roots = new Set([
   ".github", "Sources", "Tests", "ThirdPartyLicenses", "Vendor", "branding",
-  "distribution", "docs", "examples", "scripts", "security",
+  "distribution", "docs", "examples", "scripts", "security", "desktop",
 ]);
 const textExtensions = new Set([
   ".swift", ".md", ".json", ".txt", ".yaml", ".yml", ".svg", ".plist",
@@ -70,7 +70,9 @@ export function scanEntry(file, bytes, { mode = "100644", media = {} } = {}) {
         if (type === "IEND") break;
       }
     }
-  } else if (rootFiles.has(file) || textExtensions.has(extension) || ["LICENSE", "NOTICE", "CODEOWNERS"].includes(basename)) {
+  } else if (rootFiles.has(file) || textExtensions.has(extension)
+      || (parts[0] === "desktop" && [".rs", ".toml", ".lock", ".html", ".css", ".js", ".ps1"].includes(extension))
+      || ["LICENSE", "NOTICE", "CODEOWNERS"].includes(basename)) {
     if (bytes.includes(0)) rules.push("binary-in-text-file");
     rules.push(...scanText(bytes.toString("utf8"), {
       attribution: /^(?:Vendor|ThirdPartyLicenses)\//.test(file) && /(?:LICENSE|\.txt$)/.test(basename),
@@ -106,6 +108,8 @@ export function localLinks(file, text) {
   const targets = [];
   for (const match of text.matchAll(/(?:\]\((?:<([^>]+)>|([^\s)]+))(?:\s+"[^"]*")?\)|\b(?:href|src|srcset)="([^"\s]+)")/g)) {
     const value = match[1] ?? match[2] ?? match[3];
+    // Preserve the checksum-verified upstream Rustdoc link, not a filesystem link.
+    if (file === "desktop/vendor/glib/README.md" && value === "struct@Variant") continue;
     if (/^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(value)) continue;
     let clean;
     try { clean = decodeURIComponent(value.split(/[?#]/, 1)[0]); }
