@@ -4,6 +4,7 @@ import { open, realpath, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { validateInventorySummary } from "./inventory-summary.mjs";
 
 export const maxReportBytes = 16 * 1024 ** 2;
 const sha = /^[a-f0-9]{64}$/;
@@ -112,7 +113,7 @@ export function reviewEnvelope(bytes, context) {
       || typeof context.inspectionStartedAt !== "string" || !/^[1-9]\d{9,12}$/.test(context.inspectionStartedAt)) fail();
   if (context.event === "pull_request" ? typeof context.proposedHeadRevision !== "string" || !commit.test(context.proposedHeadRevision) : context.proposedHeadRevision !== null) fail();
   if (![0, 2].includes(context.inspectorExitCode)) fail(); // Exit 1 never authorizes a stale report.
-  keys(report, ["schemaVersion", "product", "builtSourceRevision", "target", "scope", "coverage", "pathPolicy", "sourceInventorySha256", "unresolved", "packages"]);
+  keys(report, ["schemaVersion", "product", "builtSourceRevision", "target", "scope", "coverage", "pathPolicy", "sourceInventorySha256", "unresolved", "packages"], ["inventorySummary"]);
   equal(report.schemaVersion, 1);
   equal(report.product, "LockedIn Flow");
   equal(report.builtSourceRevision, context.checkoutRevision);
@@ -124,6 +125,14 @@ export function reviewEnvelope(bytes, context) {
   equal(JSON.stringify(report.unresolved), JSON.stringify(["component-source-version-mapping", "native-license-and-notice-mapping", "package-control-scripts-and-signatures", "appimage-payload"]));
   if (!Array.isArray(report.packages) || report.packages.length !== 3) fail();
   ["deb", "rpm", "appimage"].forEach((format, index) => packageRecord(report.packages[index], format, report.sourceInventorySha256));
+  if (Object.hasOwn(report, "inventorySummary")) {
+    try { validateInventorySummary(report.inventorySummary, report.sourceInventorySha256); } catch { fail(); }
+    for (const pkg of report.packages.filter((p) => p.status === "payload-inspected")) {
+      const notice = pkg.files.find((f) => f.verifiedResource === "THIRD-PARTY-NOTICES.txt");
+      equal(notice.sha256, report.inventorySummary.noticesSha256);
+      equal(notice.bytes, report.inventorySummary.noticesBytes);
+    }
+  }
   const partial = report.packages.some((entry) => entry.status === "unverified");
   equal(context.inspectorExitCode, partial ? 2 : 0);
   return {

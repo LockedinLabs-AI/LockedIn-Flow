@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { digest, debApplicationDigest, inspectPackage, limits, standardTool, verifyBuildIdentity, boundedFile } from "./linux-package-evidence.mjs";
+import { verifiedInventorySummary } from "./inventory-summary.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resourceLimit = 16 * 1024 ** 2;
@@ -15,14 +16,19 @@ async function main() {
   if (!/^[a-f0-9]{40}$/.test(revision) || git("status", "--porcelain", "--untracked-files=all")) throw new Error();
   const expected = {};
   let sbom;
+  const inventoryBytes = {};
   for (const label of ["SBOM.cdx.json", "THIRD-PARTY-NOTICES.txt", "LICENSE.txt", "MODEL.json"]) {
     const bytes = await boundedFile(path.join(root, "app/resources/compliance", label), resourceLimit);
     expected[label] = digest(bytes);
+    inventoryBytes[label] = bytes;
     if (label === "SBOM.cdx.json") sbom = JSON.parse(bytes);
   }
   verifyBuildIdentity(sbom, revision,
     digest(await boundedFile(path.join(root, "Cargo.lock"), resourceLimit)),
     digest(await boundedFile(path.join(root, "package-lock.json"), resourceLimit)));
+  const inventorySummary = verifiedInventorySummary(inventoryBytes["SBOM.cdx.json"], inventoryBytes["THIRD-PARTY-NOTICES.txt"], {
+    sbomSha256: expected["SBOM.cdx.json"], noticesSha256: expected["THIRD-PARTY-NOTICES.txt"],
+  });
   const model = JSON.parse(await boundedFile(path.join(root, "models.json"), resourceLimit));
   if (model.file !== "ggml-base.en.bin" || !/^[a-f0-9]{64}$/.test(model.sha256)) throw new Error();
   expected.model = model.sha256;
@@ -41,6 +47,7 @@ async function main() {
     unresolved: ["component-source-version-mapping", "native-license-and-notice-mapping", "package-control-scripts-and-signatures", "appimage-payload"],
     packages: [],
   };
+  if (inventorySummary) report.inventorySummary = inventorySummary;
   const scratch = await mkdtemp(path.join(os.tmpdir(), "flow-package-evidence-"));
   try {
     for (const [format, extension] of [["deb", ".deb"], ["rpm", ".rpm"], ["appimage", ".AppImage"]]) {

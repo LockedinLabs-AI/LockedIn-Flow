@@ -81,6 +81,12 @@ export function describeNativeSources(pkg, archiveChecksum, files) {
   if (!yarn) throw new Error("Embedded algorithm attribution needs review.");
   return {
     components,
+    // Shared retained source notices, not a claim that these backends are linked.
+    noticeAssociations: [
+      { start: 6, end: 7, refs: [nativeReferences.whisper, nativeReferences.ggml] },
+      { start: 9, end: 10, refs: [nativeReferences.whisper, nativeReferences.ggml] },
+      { start: 13, end: 15, refs: [nativeReferences.whisper, nativeReferences.ggml] },
+    ],
     dependencies: [
       { ref: nativeReferences.whisper, dependsOn: [nativeReferences.ggml] },
       { ref: nativeReferences.ggml, dependsOn: [] },

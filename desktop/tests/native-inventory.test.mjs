@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 import { describeNativeSources, verifyNativeSource, nativeReferences } from "../scripts/native-inventory.mjs";
+import { noticeWriter } from "../scripts/inventory-summary.mjs";
 
 const archive = "a".repeat(64);
 const directory = path.resolve("synthetic-carrier");
@@ -65,4 +66,21 @@ test("missing source and changed license attribution require review", () => {
   const changed = fixture();
   changed.set("whisper.cpp/LICENSE", Buffer.from("Changed license"));
   assert.throws(() => describeNativeSources(pkg, archive, changed), /license needs review/);
+});
+
+test("native notice associations preserve legacy bytes and explicitly share MIT, CPU and YaRN blocks", () => {
+  const result = describeNativeSources(pkg, archive, fixture());
+  const writer = noticeWriter();
+  for (let i = 0; i < result.notices.length;) {
+    const entry = result.noticeAssociations.find((a) => a.start === i);
+    if (entry) { writer.forComponents(entry.refs, ...result.notices.slice(i, entry.end)); i = entry.end; }
+    else writer.push(result.notices[i++]);
+  }
+  assert.deepEqual(writer.bytes(), Buffer.from(result.notices.join("\n")));
+  const records = writer.index(result.components).components;
+  assert.deepEqual(records[0].noticeBlocks, records[1].noticeBlocks);
+  assert.equal(records[0].noticeBlocks.length, 3);
+  const text = records[0].noticeBlocks.map((b) => writer.bytes().subarray(b.offset, b.offset + b.bytes).toString());
+  assert.match(text[0], /^MIT License/); assert.match(text[1], /^Copyright 2024 Mozilla/);
+  assert.match(text[2], /^MIT licensed/); assert.match(text[2], /permission and warranty/);
 });

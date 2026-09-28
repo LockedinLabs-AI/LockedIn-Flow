@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { rustHost } from "./build-platform.mjs";
 import { nativeInventory, nativeReferences } from "./native-inventory.mjs";
 import { cargoLicenseExpression, assertInventoryLicenses } from "./inventory-licenses.mjs";
+import { noticeWriter, summaryProperty } from "./inventory-summary.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -47,14 +48,15 @@ const checksums = new Map(
     ),
   ].map((match) => [`${match[1]}@${match[2]}`, match[3]]),
 );
-const notices = [
+const notices = noticeWriter();
+notices.push(
   "# LockedIn Flow desktop dependency notices",
   "",
   "This build inventory covers Cargo target/build dependencies, verified nested speech sources, and the model; not every listed crate is linked at runtime.",
   "It is not an extracted installer inventory or complete redistribution-notice review. Bundled platform components require separate payload and license reconciliation.",
   "The Windows offline WebView2 installer is a redistributed input, distinct from the installed shared Evergreen runtime. AppImage can bundle native libraries and webview helpers; they are not all external system prerequisites. See desktop/SECURITY.md.",
   "",
-];
+);
 async function licenseFiles(directory, relative = "") {
   const found = [];
   for (const item of await readdir(directory, { withFileTypes: true })) {
@@ -124,7 +126,7 @@ for (const pkg of packages) {
     const bytes = await readFile(resolved);
     if (bytes.length > 2 * 1024 * 1024 || bytes.includes(0))
       throw new Error("Invalid dependency license text.");
-    notices.push(
+    notices.forComponents([reference(pkg)],
       `### ${file.replaceAll("\\", "/")}`,
       "",
       bytes.toString("utf8"),
@@ -143,7 +145,13 @@ const native = await nativeInventory(
   checksums.get(`${nativePackage?.name}@${nativePackage?.version}`),
 );
 components.push(...native.components);
-notices.push(...native.notices);
+for (let i = 0; i < native.notices.length;) {
+  const association = native.noticeAssociations.find((entry) => entry.start === i);
+  if (association) {
+    notices.forComponents(association.refs, ...native.notices.slice(i, association.end));
+    i = association.end;
+  } else notices.push(native.notices[i++]);
+}
 const model = JSON.parse(
   await readFile(path.join(root, "models.json"), "utf8"),
 );
@@ -156,12 +164,12 @@ components.push({
   hashes: [{ alg: "SHA-256", content: model.sha256 }],
   externalReferences: [{ type: "distribution", url: model.url }],
 });
-for (const [label, file] of [
-  ["LockedIn Flow", "LICENSE"],
-  ["Whisper model", "ThirdPartyLicenses/Whisper-MIT.txt"],
-  ["Whisper.cpp", "ThirdPartyLicenses/Whisper-cpp-MIT.txt"],
+for (const [label, file, ref] of [
+  ["LockedIn Flow", "LICENSE", "lockedin-flow"],
+  ["Whisper model", "ThirdPartyLicenses/Whisper-MIT.txt", model.id],
+  ["Whisper.cpp", "ThirdPartyLicenses/Whisper-cpp-MIT.txt", nativeReferences.whisper],
 ]) {
-  notices.push(
+  notices.forComponents([ref],
     `## ${label}`,
     "",
     await readFile(path.join(root, "..", file), "utf8"),
@@ -238,6 +246,7 @@ const sbom = {
   ],
 };
 assertInventoryLicenses(sbom);
+sbom.metadata.properties.push({ name: summaryProperty, value: JSON.stringify(notices.index([sbom.metadata.component, ...components])) });
 const output = path.join(root, "app/resources/compliance");
 await mkdir(output, { recursive: true });
 await writeFile(
@@ -246,7 +255,7 @@ await writeFile(
 );
 await writeFile(
   path.join(output, "THIRD-PARTY-NOTICES.txt"),
-  notices.join("\n"),
+  notices.bytes(),
 );
 await writeFile(
   path.join(output, "LICENSE.txt"),

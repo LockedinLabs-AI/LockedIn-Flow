@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { reviewEnvelope, prepareReviewReport, maxReportBytes } from "../scripts/validate-linux-evidence.mjs";
+import { noticeWriter, summaryScope } from "../scripts/inventory-summary.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const encode = (value) => Buffer.from(JSON.stringify(value, null, 2) + "\n");
@@ -29,6 +30,24 @@ function fixture() {
   };
 }
 const reject = (value, ctx = context()) => assert.throws(() => reviewEnvelope(encode(value), ctx), /^Error: Linux evidence validation failed; content withheld\.$/);
+
+test("optional summary binds inspected notice bytes without changing incomplete disposition", () => {
+  const report = fixture(), writer = noticeWriter();
+  writer.forComponents(["synthetic"], "Synthetic notice");
+  report.inventorySummary = { scope: summaryScope, sbomSha256: report.sourceInventorySha256, ...writer.index([{ "bom-ref": "synthetic", licenses: [{ license: { id: "MIT" } }] }]) };
+  const notice = report.packages[0].files.find((f) => f.verifiedResource === "THIRD-PARTY-NOTICES.txt");
+  notice.sha256 = report.inventorySummary.noticesSha256; notice.bytes = report.inventorySummary.noticesBytes;
+  assert.equal(reviewEnvelope(encode(report), context()).disposition, "incomplete-not-release-acceptance");
+  const clone = () => structuredClone(report);
+  for (const mutate of [
+    (r) => { r.inventorySummary.rawText = "synthetic private"; },
+    (r) => { r.inventorySummary.sbomSha256 = "f".repeat(64); },
+    (r) => { r.inventorySummary.noticesSha256 = "f".repeat(64); },
+    (r) => { r.inventorySummary.noticesBytes += 1; },
+    (r) => { r.inventorySummary.components[0].noticeBlocks[0].offset = -1; },
+    (r) => { r.inventorySummary.components[0].noticeEvidence = "approved"; },
+  ]) { const r = clone(); mutate(r); reject(r); }
+});
 
 test("valid partial report retains actual checkout, distinct PR head, run and incomplete disposition", () => {
   const ctx = context(), report = fixture();
