@@ -8,6 +8,8 @@ import { rustHost } from "./build-platform.mjs";
 import { nativeInventory, nativeReferences } from "./native-inventory.mjs";
 import { cargoLicenseExpression, assertInventoryLicenses } from "./inventory-licenses.mjs";
 import { noticeWriter, summaryProperty } from "./inventory-summary.mjs";
+import { workspaceNoticeReferences } from "./workspace-notices.mjs";
+import { supplementalNotices } from "./supplemental-notices.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args) =>
@@ -133,7 +135,17 @@ for (const pkg of packages) {
       "",
     );
   }
-  if (!files.length && pkg.source)
+  const supplemental = await supplementalNotices(pkg, checksum);
+  for (const notice of supplemental)
+    notices.forComponents([reference(pkg)],
+      `### Supplemental upstream ${notice.label}`,
+      "",
+      `Immutable source: ${notice.source}`,
+      "",
+      notice.text,
+      "",
+    );
+  if (!files.length && !supplemental.length && pkg.source)
     notices.push(
       `Published source: https://crates.io/crates/${pkg.name}/${pkg.version}`,
       "",
@@ -164,12 +176,13 @@ components.push({
   hashes: [{ alg: "SHA-256", content: model.sha256 }],
   externalReferences: [{ type: "distribution", url: model.url }],
 });
-for (const [label, file, ref] of [
-  ["LockedIn Flow", "LICENSE", "lockedin-flow"],
-  ["Whisper model", "ThirdPartyLicenses/Whisper-MIT.txt", model.id],
-  ["Whisper.cpp", "ThirdPartyLicenses/Whisper-cpp-MIT.txt", nativeReferences.whisper],
+const ownedNoticeRefs = await workspaceNoticeReferences(metadata, root, readFile);
+for (const [label, file, refs] of [
+  ["LockedIn Flow", "LICENSE", ["lockedin-flow", ...ownedNoticeRefs]],
+  ["Whisper model", "ThirdPartyLicenses/Whisper-MIT.txt", [model.id]],
+  ["Whisper.cpp", "ThirdPartyLicenses/Whisper-cpp-MIT.txt", [nativeReferences.whisper]],
 ]) {
-  notices.forComponents([ref],
+  notices.forComponents(refs,
     `## ${label}`,
     "",
     await readFile(path.join(root, "..", file), "utf8"),
