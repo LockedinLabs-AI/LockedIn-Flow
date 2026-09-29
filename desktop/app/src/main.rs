@@ -3,7 +3,10 @@
 mod worker;
 
 use lockedin_flow_core::vocabulary::MAX_INPUT;
-use std::sync::{mpsc::SyncSender, Arc, Mutex};
+use std::sync::{
+    mpsc::{self, SyncSender},
+    Arc, Mutex,
+};
 use tauri::Manager;
 use worker::{Action, Message, View};
 
@@ -47,7 +50,7 @@ fn get_status(
 }
 
 #[tauri::command]
-fn perform_action(
+async fn perform_action(
     window: tauri::WebviewWindow,
     services: tauri::State<'_, Services>,
     action: Action,
@@ -62,14 +65,19 @@ fn perform_action(
             return Err("This action is not available in the current dictation state.");
         }
     }
+    let (completion, receiver) = mpsc::sync_channel(1);
     services
         .sender
-        .try_send(Message::Action(action))
-        .map_err(|_| "LockedIn Flow is busy. Please wait for the current action.")
+        .try_send(Message::Action(action, completion))
+        .map_err(|_| "LockedIn Flow is busy. Please wait for the current action.")?;
+    tauri::async_runtime::spawn_blocking(move || receiver.recv())
+        .await
+        .map_err(|_| "The dictation worker is unavailable.")?
+        .map_err(|_| "The dictation worker is unavailable.")?
 }
 
 #[tauri::command]
-fn set_vocabulary(
+async fn set_vocabulary(
     window: tauri::WebviewWindow,
     services: tauri::State<'_, Services>,
     text: String,
@@ -87,10 +95,18 @@ fn set_vocabulary(
     if text.len() > MAX_INPUT {
         return Err("Vocabulary is limited to 16 KB.");
     }
+    let (completion, receiver) = mpsc::sync_channel(1);
     services
         .sender
-        .try_send(Message::Vocabulary(zeroize::Zeroizing::new(text)))
-        .map_err(|_| "LockedIn Flow is busy. Please wait for the current action.")
+        .try_send(Message::Vocabulary(
+            zeroize::Zeroizing::new(text),
+            completion,
+        ))
+        .map_err(|_| "LockedIn Flow is busy. Please wait for the current action.")?;
+    tauri::async_runtime::spawn_blocking(move || receiver.recv())
+        .await
+        .map_err(|_| "The dictation worker is unavailable.")?
+        .map_err(|_| "The dictation worker is unavailable.")?
 }
 
 fn main() {

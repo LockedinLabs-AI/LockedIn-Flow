@@ -13,9 +13,19 @@ continuously for five seconds within a 45-second startup window. Early exits,
 crashes, disappearing windows and failed probes fail the check. It does not
 request microphone access or disable the webview sandbox.
 
-This new check requires its own native CI result; the historical results below
-do not cover it. Window/process liveness does not establish rendered UI,
-recording, transcription accuracy, accessibility or physical-device acceptance.
+[Native run 36515302800](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36515302800)
+passed this installed launch check, resource integrity and removal for source
+`f588fbb04fbae6c98c882cf961bb6134a0d8c829`. Windows installer validation also
+passed. The overall run still failed the incomplete Linux payload acceptance
+gate; these results do not waive RPM/AppImage or redistribution requirements.
+Window/process liveness does not establish rendered UI, recording, transcription
+accuracy, accessibility or physical-device acceptance.
+
+The subsequent recording-control correction waits for worker completion before
+unlocking commands, rejects stale pre-command status updates, and preserves the
+visible transcript while controls are disabled after a lost status connection.
+Its local regression tests cover duplicate Stop/vocabulary requests, stale polls,
+and lost status; native validation must cover this newer source separately.
 
 ## Latest cross-platform validation: 28 September 2026
 

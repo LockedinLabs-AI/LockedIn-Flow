@@ -70,7 +70,8 @@ test("recording and recovery expose the correct explicit actions", async () => {
     assert.equal(ui.element("record").textContent, label);
     assert.equal(ui.element("record").disabled, false);
     await ui.element("record").listeners.click();
-    assert.equal(ui.calls.at(-1)[1].action, action);
+    assert.deepEqual(ui.calls.map(([command]) => command), ["get_status", "perform_action", "get_status"]);
+    assert.equal(ui.calls[1][1].action, action);
   }
 });
 
@@ -101,5 +102,6 @@ test("transcript content remains plain text, and copy is never automatic", async
     ["get_status"],
   );
   await ui.element("copy").listeners.click();
-  assert.equal(ui.calls.at(-1)[1].action, "copy");
+  assert.deepEqual(ui.calls.map(([command]) => command), ["get_status", "perform_action", "get_status"]);
+  assert.equal(ui.calls[1][1].action, "copy");
 });

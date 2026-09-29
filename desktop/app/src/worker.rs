@@ -72,8 +72,8 @@ impl Action {
     }
 }
 pub enum Message {
-    Action(Action),
-    Vocabulary(Zeroizing<String>),
+    Action(Action, SyncSender<Result<(), &'static str>>),
+    Vocabulary(Zeroizing<String>, SyncSender<Result<(), &'static str>>),
 }
 
 pub fn spawn(resources: PathBuf) -> std::io::Result<(SyncSender<Message>, Arc<Mutex<View>>)> {
@@ -152,25 +152,28 @@ impl Worker {
     fn run(&mut self, receiver: Receiver<Message>) {
         loop {
             match receiver.recv_timeout(Duration::from_millis(150)) {
-                Ok(Message::Action(action)) => {
-                    if let Err(error) = self.action(action) {
+                Ok(Message::Action(action, completion)) => {
+                    self.complete_action(action, completion);
+                }
+                Ok(Message::Vocabulary(text, completion)) => {
+                    let result = if self.session.phase != Phase::Ready {
+                        Err("Finish the current recording before changing vocabulary.")
+                    } else {
+                        match Vocabulary::parse(&text) {
+                            Ok(vocabulary) => {
+                                self.vocabulary = vocabulary;
+                                self.update(
+                                    "Vocabulary applied for this session. It is not saved to disk.",
+                                );
+                                Ok(())
+                            }
+                            Err(error) => Err(error),
+                        }
+                    };
+                    if let Err(error) = result {
                         self.update(error);
                     }
-                }
-                Ok(Message::Vocabulary(text)) => {
-                    if self.session.phase != Phase::Ready {
-                        self.update("Finish the current recording before changing vocabulary.");
-                        continue;
-                    }
-                    match Vocabulary::parse(&text) {
-                        Ok(vocabulary) => {
-                            self.vocabulary = vocabulary;
-                            self.update(
-                                "Vocabulary applied for this session. It is not saved to disk.",
-                            );
-                        }
-                        Err(error) => self.update(error),
-                    }
+                    let _ = completion.try_send(result);
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -256,6 +259,20 @@ impl Worker {
             Action::ReloadModel => self.load_model(),
         }
         Ok(())
+    }
+
+    fn complete_action(
+        &mut self,
+        action: Action,
+        completion: SyncSender<Result<(), &'static str>>,
+    ) {
+        let result = self.action(action);
+        if let Err(error) = result {
+            self.update(error);
+        }
+        // The IPC promise resolves after state and user-visible text are updated,
+        // not merely after enqueueing. A closed window must never block capture.
+        let _ = completion.try_send(result);
     }
 
     fn finish_capture(&mut self) -> Result<(), &'static str> {
@@ -527,5 +544,31 @@ mod tests {
         assert!(!Action::Start.allowed(Phase::Recording));
         assert!(!Action::Start.allowed(Phase::Recovery));
         assert!(Action::Start.allowed(Phase::Ready));
+    }
+
+    #[test]
+    fn action_acknowledgement_follows_updated_state_and_reports_failure() {
+        let mut worker = worker(false);
+        worker.session.phase = Phase::Recovery;
+        let (sender, receiver) = mpsc::sync_channel(1);
+        worker.complete_action(Action::Discard, sender);
+        assert_eq!(receiver.recv().unwrap(), Ok(()));
+        assert_eq!(worker.view.lock().unwrap().phase, Phase::Ready);
+        assert!(worker.recovery.is_none());
+        let (sender, receiver) = mpsc::sync_channel(1);
+        worker.complete_action(Action::Retry, sender);
+        assert!(receiver.recv().unwrap().is_err());
+        assert_eq!(worker.session.phase, Phase::Ready);
+    }
+
+    #[test]
+    fn closed_ui_does_not_block_worker_completion() {
+        let mut worker = worker(false);
+        worker.session.phase = Phase::Recovery;
+        let (sender, receiver) = mpsc::sync_channel(1);
+        drop(receiver);
+        worker.complete_action(Action::Discard, sender);
+        assert_eq!(worker.session.phase, Phase::Ready);
+        assert!(worker.recovery.is_none());
     }
 }
