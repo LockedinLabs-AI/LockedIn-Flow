@@ -3,10 +3,56 @@
 This page records what the current LockedIn Flow candidate has actually passed and
 keeps source validation separate from installed-product acceptance.
 
-## Cross-platform candidate: 27 September 2026
+## Installed Linux launch gate
+
+The desktop workflow now includes an installed-DEB launch check, in addition to
+file-integrity and uninstall checks. It runs as the ordinary ephemeral runner
+user inside a network namespace with only loopback, using an isolated X/DBus
+session. The exact installed process must expose a visible LockedIn Flow window
+continuously for five seconds within a 45-second startup window. Early exits,
+crashes, disappearing windows and failed probes fail the check. It does not
+request microphone access or disable the webview sandbox.
+
+This new check requires its own native CI result; the historical results below
+do not cover it. Window/process liveness does not establish rendered UI,
+recording, transcription accuracy, accessibility or physical-device acceptance.
+
+## Latest cross-platform validation: 28 September 2026
+
+The latest completed native validation covers source
+`b0235f94804477cb5ab9a5bba7e9fb04e3ec18af` in the open
+[desktop pull request](https://github.com/LockedinLabs-AI/LockedIn-Flow/pull/10),
+not a merged or published production release. The actual CI checkout was
+`cbf36f986f575081e13570ebf5461b2d276eec6f`; its tree matches that source.
+
+- [Native desktop validation](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36371173666):
+  Windows passed NSIS/MSI installation, branding, resource integrity and removal,
+  including offline WebView2 input identity and signature checks. Linux passed
+  DEB original-payload inspection (26 entries), installed integrity and removal.
+  **Overall native validation failed:** RPM payload verification is unavailable
+  and the AppImage payload reader is not implemented. These gates were not waived.
+- [General CI](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36371173644),
+  [Security](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36371173729),
+  [dependency review](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36371173630)
+  and [public metadata](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36372916620)
+  passed. The assembled Node 22 tooling suite passed 179 tests with two
+  Windows-only tests skipped on the local Mac.
+- The validated Linux report records 349 inventory components: 344 with retained
+  notice text and five source-reference-only entries. The remaining entries are
+  `dlopen2`, `dlopen2_derive`, `audio-core`, `selectors` and `realfft`.
+  Retained text is not complete license approval or proof of runtime linkage;
+  the short `dasp_sample` Apache reference is not a full license text.
+
+Installer binaries were not uploaded or released by this pull-request run.
+Real-device microphone, cross-application delivery, conferencing coexistence,
+upgrade/rollback, signing and remaining redistribution review still require
+acceptance. Successful synthetic offline recognition does not establish those
+results. A later source revision must receive its own relevant validation.
+
+## Earlier cross-platform baseline: 27 September 2026
 
 The repository is public source; the work below is in the review branch, not a
-production download. The last fully completed baseline in this record is
+production download. This earlier baseline is
 `5cad8e42def1dec9333d8cd37b7193ea397502e0`:
 
 | Evidence | Observed result | Scope |

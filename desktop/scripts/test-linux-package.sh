@@ -52,6 +52,11 @@ if (digest(installed) !== debApplicationDigest(reference)) {
   throw new Error('Installed application integrity check failed.');
 }
 NODE
+# Run the installed executable as the ordinary runner user, with its own X/DBus
+# session and no external network interface. Do not request microphone access.
+sudo unshare --net -- runuser -u "$(id -un)" -- env \
+  GITHUB_ACTIONS=true RUNNER_OS=Linux RUNNER_ENVIRONMENT=github-hosted \
+  PATH="$PATH" dbus-run-session -- xvfb-run -a node scripts/test-linux-launch.mjs
 sudo dpkg --remove "$package_name"
 trap - EXIT
 [[ ! -e /usr/bin/lockedin-flow-desktop && ! -e "$model" ]]
