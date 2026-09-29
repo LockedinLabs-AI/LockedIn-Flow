@@ -138,6 +138,41 @@ final class CaptureRecoveryCoordinatorTests: XCTestCase {
 }
 
 final class AudioCaptureRecoveryLifecycleTests: XCTestCase {
+    func testInvalidAudioStopsSafelyAndPreservesEarlierSamples() throws {
+        for invalid in [Float.nan, .infinity, -.infinity] {
+            let clock = TestUptime()
+            let factory = FakeAudioCaptureEngineFactory(outcomes: [.success])
+            let manager = makeManager(clock: clock, factory: factory)
+            try manager.start()
+            let session = try XCTUnwrap(factory.sessions.first)
+            session.deliver([0.1, 0.2])
+            session.deliver([0.3, invalid])
+            session.deliver([0.4])
+            XCTAssertThrowsError(try manager.recoverCaptureIfNeeded())
+            let result = manager.stopWithResult()
+            XCTAssertNotNil(result.terminalError)
+            XCTAssertEqual(result.samples, [0.1, 0.2])
+            XCTAssertTrue(result.samples.allSatisfy(\.isFinite))
+        }
+    }
+
+    func testNewCaptureAfterInvalidAudioDoesNotInheritFailure() throws {
+        let clock = TestUptime()
+        let factory = FakeAudioCaptureEngineFactory(outcomes: [.success, .success])
+        let manager = makeManager(clock: clock, factory: factory)
+        try manager.start()
+        let old = try XCTUnwrap(factory.sessions.first)
+        old.deliver([.nan])
+        XCTAssertNotNil(manager.stopWithResult().terminalError)
+        try manager.start()
+        old.deliver([.infinity])
+        try XCTUnwrap(factory.sessions.last).deliver([0.5])
+        XCTAssertFalse(try manager.recoverCaptureIfNeeded())
+        let result = manager.stopWithResult()
+        XCTAssertNil(result.terminalError)
+        XCTAssertEqual(result.samples, [0.5])
+    }
+
     func testManagerDefaultsToStandardCaptureWithoutTouchingHardware() throws {
         let clock = TestUptime()
         let factory = FakeAudioCaptureEngineFactory(outcomes: [.success])
