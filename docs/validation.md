@@ -24,12 +24,51 @@ accuracy, accessibility or physical-device acceptance.
 The subsequent recording-control correction waits for worker completion before
 unlocking commands, rejects stale pre-command status updates, and preserves the
 visible transcript while controls are disabled after a lost status connection.
-Its local regression tests cover duplicate Stop/vocabulary requests, stale polls,
-and lost status; native validation must cover this newer source separately.
+Its regression tests cover duplicate Stop/vocabulary requests, stale polls,
+and lost status. The native run below includes this correction.
 
-## Latest cross-platform validation: 28 September 2026
+## Latest cross-platform validation: 29 September 2026
 
-The latest completed native validation covers source
+Source `83b1ec79cbdc48307fbaf4c78e1bd43e2d6c65fb` completed
+[native validation](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36554089355)
+in the open desktop pull request. The tested merge checkout was
+`b57ae07e9ccb9a9ab38dc3aeaf3d6fcfa16e24b2`.
+
+- Windows passed native tests, synthetic offline recognition, and NSIS/MSI
+  installation, branding, resource-integrity and removal checks.
+- Linux passed synthetic offline recognition, installed DEB window/process
+  launch without an external network interface, resource integrity and removal.
+  **Overall native validation still failed** the incomplete RPM/AppImage
+  payload-acceptance gate. No requirement was waived.
+- [General CI](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36554089442),
+  [security](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36554089379),
+  [dependency review](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36554089333)
+  and [public metadata](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36554089431)
+  passed. Evaluation attestation was skipped; this is not signing evidence.
+- The Mac capture change rejects non-finite audio, preserves earlier valid
+  samples, and prevents callbacks from a failed or obsolete session from
+  contaminating a recording. Its reproducer failed before the fix; the full
+  local Swift suite then passed 550 tests. Ten consecutive synthetic Parakeet
+  transcriptions also returned consistent words with networking denied.
+  This does not establish physical microphone reliability or resolution of
+  every historical target-field error. Memory usage was not measured.
+
+The preceding notice-only source `1382ad036b3740d3b9dae0c095ea10ff9f2d021c`
+has a validated [native report](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36548548555)
+with 349 inventory components: 346 retain notice text and three remain
+source-reference-only (`audio-core`, `selectors`, `realfft`). The supplemental
+`dlopen2` and `dlopen2_derive` notices reached the generated native inventory.
+Retained text does not establish complete redistribution approval or runtime
+linkage; the short `dasp_sample` Apache reference remains a separate concern.
+
+These are candidate results, not a production release or signed-device
+acceptance. Independent review, remaining payload and redistribution checks,
+trusted signing, physical microphone/coexistence testing, and upgrade/rollback
+acceptance remain required. No production installer was published by this run.
+
+## Earlier cross-platform validation: 28 September 2026
+
+This earlier completed native validation covers source
 `b0235f94804477cb5ab9a5bba7e9fb04e3ec18af` in the open
 [desktop pull request](https://github.com/LockedinLabs-AI/LockedIn-Flow/pull/10),
 not a merged or published production release. The actual CI checkout was
