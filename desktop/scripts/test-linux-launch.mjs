@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
-import { readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import { performance } from "node:perf_hooks";
 import { waitForStableWindow } from "./linux-launch-check.mjs";
@@ -11,7 +11,10 @@ async function main() {
       || process.env.RUNNER_ENVIRONMENT !== "github-hosted" || process.getuid() === 0) throw new Error();
   // A fresh network namespace exposes loopback only. No firewall relaxation or
   // application/webview sandbox override is permitted for this test.
-  const interfaces = await readdir("/sys/class/net");
+  // /proc/self/net reflects this process's namespace; an inherited sysfs mount
+  // can still describe the host namespace.
+  const interfaces = (await readFile("/proc/self/net/dev", "utf8")).trim().split("\n").slice(2)
+    .map((line) => line.split(":")[0].trim());
   if (interfaces.length !== 1 || interfaces[0] !== "lo") throw new Error();
   const child = spawn("/usr/bin/lockedin-flow-desktop", [], {
     detached: true, stdio: "ignore", env: { ...process.env, GDK_BACKEND: "x11" },
