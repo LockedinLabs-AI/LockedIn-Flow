@@ -94,5 +94,77 @@
         "text": "Copyright (c) Ferrous Systems\n\nPermission is hereby granted, free of charge, to any\nperson obtaining a copy of this software and associated\ndocumentation files (the \"Software\"), to deal in the\nSoftware without restriction, including without\nlimitation the rights to use, copy, modify, merge,\npublish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software\nis furnished to do so, subject to the following\nconditions:\n\nThe above copyright notice and this permission notice\nshall be included in all copies or substantial portions\nof the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF\nANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED\nTO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A\nPARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT\nSHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\nCLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR\nIN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER\nDEALINGS IN THE SOFTWARE."
       }
     ]
+  },
+  {
+    "name": "dlopen2",
+    "version": "0.8.2",
+    "checksum": "5e2c5bd4158e66d1e215c49b837e11d62f3267b30c92f1d171c4d3105e3dc4d4",
+    "license": "MIT",
+    "repository": "https://github.com/OpenByteDev/dlopen2",
+    "revision": "cc80e4a0a90d499b677fdf7743699b4b3a43a989",
+    "sourceComparison": {
+      "kind": "exact-except-recorded-crlf-lf-differences",
+      "rustFilesCompared": 37,
+      "differences": [
+        {
+          "publishedPath": "Cargo.toml.orig",
+          "upstreamPath": "dlopen2/Cargo.toml",
+          "publishedSha256": "4db2cb7eef7db93aac79ebab07af14ef27e00cc322ebb9f3744fcc971a1a6b6a",
+          "upstreamSha256": "0153c3c729490e105d65aa883c3891323ae801aedbf24eac4edbe21de6d2efa7",
+          "upstreamGitBlob": "51ad853aeaf65e937e26acfc9a918f4936de9e83",
+          "classification": "CRLF-versus-LF-only-not-byte-equality"
+        }
+      ]
+    },
+    "notices": [
+      {
+        "path": "LICENSE",
+        "url": "https://github.com/OpenByteDev/dlopen2/blob/cc80e4a0a90d499b677fdf7743699b4b3a43a989/LICENSE",
+        "sha256": "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2",
+        "bytes": 1184,
+        "kind": "license-text",
+        "text": "MIT License\n\nCopyright (c) 2017 Szymon Wieloch\nCopyright (C) 2019 Ahmed Masud <ahmed.masud@saf.ai>\nCopyright (C) 2022 OpenByte <development.openbyte@gmail.com>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
+      }
+    ]
+  },
+  {
+    "name": "dlopen2_derive",
+    "version": "0.4.3",
+    "checksum": "0fbbb781877580993a8707ec48672673ec7b81eeba04cfd2310bd28c08e47c8f",
+    "license": "MIT",
+    "repository": "https://github.com/OpenByteDev/dlopen2",
+    "revision": "cc80e4a0a90d499b677fdf7743699b4b3a43a989",
+    "sourceComparison": {
+      "kind": "exact-except-recorded-crlf-lf-differences",
+      "rustFilesCompared": 5,
+      "differences": [
+        {
+          "publishedPath": "Cargo.toml.orig",
+          "upstreamPath": "dlopen2-derive/Cargo.toml",
+          "publishedSha256": "5e3d2d7fe64c4b47b01d4c2e88dbf669bf0950d937b43757b48f965bea4e254a",
+          "upstreamSha256": "8a2558abfe3b44960eaca355b1f3262b86d27760978f8a34d317d1b3daa92965",
+          "upstreamGitBlob": "22219c8c7e68216021094d111925caf485331573",
+          "classification": "CRLF-versus-LF-only-not-byte-equality"
+        },
+        {
+          "publishedPath": "src/common.rs",
+          "upstreamPath": "dlopen2-derive/src/common.rs",
+          "publishedSha256": "2c986f6129c8e98785b4769bd35cd791438ee9ff8a78a015376f796ec275e16f",
+          "upstreamSha256": "78d04c4bbea78447c7906b19c29738f33e410e7240f6182baeda603fd5f82467",
+          "upstreamGitBlob": "514ebb00973c852152451e90e1dc0ff1b3a98030",
+          "classification": "CRLF-versus-LF-only-not-byte-equality"
+        }
+      ]
+    },
+    "notices": [
+      {
+        "path": "LICENSE",
+        "url": "https://github.com/OpenByteDev/dlopen2/blob/cc80e4a0a90d499b677fdf7743699b4b3a43a989/LICENSE",
+        "sha256": "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2",
+        "bytes": 1184,
+        "kind": "license-text",
+        "text": "MIT License\n\nCopyright (c) 2017 Szymon Wieloch\nCopyright (C) 2019 Ahmed Masud <ahmed.masud@saf.ai>\nCopyright (C) 2022 OpenByte <development.openbyte@gmail.com>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
+      }
+    ]
   }
 ]

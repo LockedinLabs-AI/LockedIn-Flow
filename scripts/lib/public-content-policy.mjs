@@ -76,8 +76,12 @@ export function scanEntry(file, bytes, { mode = "100644", media = {} } = {}) {
       || (parts[0] === "desktop" && [".rs", ".toml", ".lock", ".html", ".css", ".js", ".ps1"].includes(extension))
       || ["LICENSE", "NOTICE", "CODEOWNERS"].includes(basename)) {
     if (bytes.includes(0)) rules.push("binary-in-text-file");
+    // Preserve authentic upstream copyright contacts only in this exact pinned
+    // notice material. Any changed bytes or other path still undergo contact screening.
+    const pinnedNoticeAttribution = file === "desktop/notices/supplemental.json"
+      && createHash("sha256").update(bytes).digest("hex") === "0dda31aac1a7639ffe2bc3ee7211967528267261b29ace53882a7ca88917aa24";
     rules.push(...scanText(bytes.toString("utf8"), {
-      attribution: /^(?:Vendor|ThirdPartyLicenses)\//.test(file) && /(?:LICENSE|\.txt$)/.test(basename),
+      attribution: pinnedNoticeAttribution || (/^(?:Vendor|ThirdPartyLicenses)\//.test(file) && /(?:LICENSE|\.txt$)/.test(basename)),
     }));
   } else {
     rules.push("unapproved-file-type");

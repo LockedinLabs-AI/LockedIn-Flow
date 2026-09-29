@@ -8,8 +8,8 @@ const raw = await readFile(new URL("../notices/supplemental.json", import.meta.u
 const records = JSON.parse(raw);
 const pkg = (record) => ({ ...record, source: "registry+https://github.com/rust-lang/crates.io-index" });
 
-test("four exact carriers retain seven authentic immutable notices", async () => {
-  assert.deepEqual(records.map((r) => r.name), ["alloc-stdlib", "dasp_sample", "libappindicator-sys", "defmt-parser"]);
+test("six exact carriers retain nine authentic immutable notices", async () => {
+  assert.deepEqual(records.map((r) => r.name), ["alloc-stdlib", "dasp_sample", "libappindicator-sys", "defmt-parser", "dlopen2", "dlopen2_derive"]);
   let count = 0;
   for (const record of records) {
     const notices = await supplementalNotices(pkg(record), record.checksum);
@@ -21,12 +21,12 @@ test("four exact carriers retain seven authentic immutable notices", async () =>
       assert.ok(notice.source.includes(record.revision));
     }
   }
-  assert.equal(count, 7);
+  assert.equal(count, 9);
 });
 
 test("changed version, carrier, license and registry cannot inherit notices", async () => {
   for (const record of records) {
-    for (const change of [{version:"999.0.0"}, {source:null}, {source:"registry+https://example.invalid/index"}, {license:"MIT"}])
+    for (const change of [{version:"999.0.0"}, {source:null}, {source:"registry+https://example.invalid/index"}, {license:record.license === "MIT" ? "Apache-2.0" : "MIT"}])
       await assert.rejects(supplementalNotices({...pkg(record), ...change}, record.checksum), /carrier identity changed/);
     await assert.rejects(supplementalNotices(pkg(record), "0".repeat(64)), /carrier identity changed/);
     await assert.rejects(supplementalNotices(pkg(record), undefined), /carrier identity changed/);
@@ -55,6 +55,26 @@ test("short Apache reference stays distinct and unresolved carriers receive no n
   assert.match(notices[0].label, /short notice\/reference; not full license text/);
   assert.equal(Buffer.byteLength(notices[0].text), 561);
   assert.match(notices[1].label, /license text/);
-  for (const name of ["dlopen2", "dlopen2_derive", "audio-core", "selectors", "realfft"])
+  for (const name of ["audio-core", "selectors", "realfft"])
     assert.deepEqual(await supplementalNotices({ name }, undefined), []);
+});
+
+test("line-ending evidence retains distinct raw identities and cannot silently change", async () => {
+  for (const name of ["dlopen2", "dlopen2_derive"]) {
+    const record = records.find((r) => r.name === name);
+    const comparison = record.sourceComparison;
+    assert.equal(comparison.kind, "exact-except-recorded-crlf-lf-differences");
+    assert.equal(comparison.rustFilesCompared, name === "dlopen2" ? 37 : 5);
+    assert.equal(comparison.differences.length, name === "dlopen2" ? 1 : 2);
+    for (const difference of comparison.differences) {
+      assert.equal(difference.classification, "CRLF-versus-LF-only-not-byte-equality");
+      assert.notEqual(difference.publishedSha256, difference.upstreamSha256);
+      assert.match(difference.publishedSha256, /^[a-f0-9]{64}$/);
+      assert.match(difference.upstreamSha256, /^[a-f0-9]{64}$/);
+      const changed = structuredClone(records);
+      changed.find((r) => r.name === name).sourceComparison.differences[0].classification = "exact";
+      await assert.rejects(supplementalNotices(pkg(record), record.checksum,
+        async () => Buffer.from(JSON.stringify(changed))), /reviewed digest/);
+    }
+  }
 });

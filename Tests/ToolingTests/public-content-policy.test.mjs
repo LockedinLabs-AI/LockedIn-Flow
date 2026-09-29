@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { localLinks, scanEntry, scanText, stripPngMetadata } from "../../scripts/lib/public-content-policy.mjs";
+
+test("upstream notice contacts require both the exact file and pinned bytes", () => {
+  const bytes = readFileSync(new URL("../../desktop/notices/supplemental.json", import.meta.url));
+  const file = "desktop/notices/supplemental.json";
+  assert.deepEqual(scanEntry(file, bytes), []);
+  assert.ok(scanEntry("docs/supplemental.json", bytes).includes("unreviewed-contact-address"));
+  assert.ok(scanEntry(file, Buffer.concat([bytes, Buffer.from("\n")])).includes("unreviewed-contact-address"));
+  const contact = Buffer.from(["synthetic", "unreviewed.test"].join("@"));
+  assert.ok(scanEntry(file, contact).includes("unreviewed-contact-address"));
+  assert.ok(scanEntry(file, bytes, { mode: "120000" }).includes("nonregular-git-entry"));
+});
 
 test("publication policy rejects private surfaces without returning their contents", () => {
   const bytes = Buffer.from("synthetic sensitive payload");
