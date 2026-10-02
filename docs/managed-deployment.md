@@ -1,6 +1,6 @@
 # Managed deployment
 
-This guide describes the Community build's implemented macOS boundary. It is a
+This guide describes the LockedIn Flow build's implemented macOS boundary. It is a
 deployment starting point, not a certification or a substitute for an
 organization-specific risk assessment.
 
@@ -9,7 +9,9 @@ organization-specific risk assessment.
 - Base dictation requires Apple silicon and macOS 15 or later.
 - Apple Foundation Models cleanup, translation, and Meeting notes require
   macOS 26 or later with Apple Intelligence available and enabled.
-- The Community bundle identifier is `ai.lockedin.flow.community`.
+- The LockedIn Flow bundle identifier is `ai.lockedin.flow.community`.
+- Existing internal identifiers and storage paths are retained for compatibility
+  with earlier source evaluations. They do not designate a separate product edition.
 - The application is not App-Sandboxed. It needs user-granted Microphone and
   Accessibility access and otherwise runs with the signed-in user's normal
   filesystem access.
@@ -158,14 +160,14 @@ launch and confirm the selected model reaches Ready.
 
 Use a signed, stable designated requirement before creating a Privacy
 Preferences Policy Control (PPPC) profile. Scope Accessibility narrowly to the
-Community bundle and its approved signature; do not approve arbitrary or
+LockedIn Flow bundle and its approved signature; do not approve arbitrary or
 ad-hoc-signed builds. Microphone consent and PPPC behavior vary by macOS and
 management platform, so validate the exact profile on the deployed OS release
 against current Apple and MDM-vendor guidance.
 
 Recommended host controls include FileVault, screen-lock policy, least-privilege
 user accounts, endpoint detection, denied application egress, and reviewed
-retention settings. The separate Community storage
+retention settings. The separate LockedIn Flow storage
 names prevent accidental collision with another build but are not an OS sandbox.
 
 ## Acceptance

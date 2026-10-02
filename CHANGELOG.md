@@ -1,31 +1,33 @@
 # Changelog
 
 This project follows [Semantic Versioning](https://semver.org/). The first
-Community source release will be tagged only after the candidate and release
+LockedIn Flow source release will be tagged only after the candidate and release
 evidence are approved.
 
 ## [Unreleased]
 
 ### Changed
 
-- Licensed the Community source under the MIT License for individual and
+- Standardized product labels and package names on LockedIn Flow, without an
+  edition suffix. Existing storage and Keychain identifiers remain unchanged.
+- Licensed the LockedIn Flow source under the MIT License for individual and
   commercial use, modification, and distribution, subject to its terms;
   enterprise deployment and support remain optional services rather than a
   usage-license requirement.
-- Established a Mac-only Community source distribution with independent runtime
+- Established a Mac-only LockedIn Flow source distribution with independent runtime
   identity and fresh release history.
 - Replaced broad cloud claims with an explicit model-download network boundary
-  and documented that Community builds contain no updater.
-- Made Community builds unlimited, with no trial, usage cap, metered billing,
+  and documented that LockedIn Flow builds contain no updater.
+- Made LockedIn Flow builds unlimited, with no trial, usage cap, metered billing,
   purchase flow, or activation requirement.
 - Added governance, contribution, disclosure, threat-model, CI, dependency,
   secret-scanning, and CodeQL configuration.
-- Isolated the Community bundle, storage, Keychain, and model cache from the
-  maintained app, and removed the automatic updater dependency.
+- Isolated the source-build bundle, storage, Keychain, and model cache from
+  earlier proprietary builds, and removed the automatic updater dependency.
 - Pinned all runtime model repositories and added exact byte-count and SHA-256
   verification before model activation.
 - Made dictation History and Recovery session-only by default and prevented
-  implicit clipboard export after failed Community insertions.
+  implicit clipboard export after failed LockedIn Flow insertions.
 - Removed model acquisition from the application runtime. Models are now
   explicitly pre-provisioned, verified read-only from a managed or user cache,
   and FluidAudio is forced offline before loading.

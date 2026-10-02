@@ -7,7 +7,7 @@ available and enabled.
 
 ## Current publication status
 
-No application is listed as accepted for the v0.4.17 Community candidate yet.
+No application is listed as accepted for the v0.4.17 LockedIn Flow candidate yet.
 The source test suite covers capture recovery, delivery-time target resolution,
 secure-field refusal, at-most-once insertion policy, local storage, terminology,
 cleanup, and model integrity, but source tests are not a substitute for the
@@ -35,7 +35,7 @@ counted as success.
 ## Known scope
 
 - macOS on Apple silicon is the only current product target.
-- Windows and Linux are not supported Community release platforms.
+- Windows and Linux are not supported LockedIn Flow release platforms.
 - An external destination application may sync or transmit inserted text under
   its own policy; LockedIn Flow cannot change that application's boundary.
 - A local transcript inserted into a cloud AI client remains local only until
