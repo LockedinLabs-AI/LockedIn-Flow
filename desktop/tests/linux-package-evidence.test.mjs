@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, symlink, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { digest, debApplicationDigest, inspectTar, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
+import { digest, debApplicationDigest, inspectTar, inspectCpio, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
 
 // Only synthetic, in-memory USTAR fixtures. No application or model is run.
 const resourceRoot = "usr/lib/lockedin-flow-desktop";
@@ -51,6 +51,59 @@ function packageBytes(format) {
   if (format === "appimage") { bytes.set([127, 69, 76, 70]); bytes.set([65, 73, 2], 8); }
   return bytes;
 }
+
+function cpioEntry(name, data, overrides = {}) {
+  const value = Buffer.from(data);
+  const fields = { ino: 1, mode: 0o100644, uid: 0, gid: 0, links: 1, time: 0,
+    size: value.length, major: 0, minor: 0, rmajor: 0, rminor: 0,
+    nameSize: Buffer.byteLength(name) + 1, checksum: 0, ...overrides };
+  const header = Buffer.from("070701" + Object.values(fields).map((v) => v.toString(16).padStart(8, "0")).join(""));
+  const prefix = Buffer.concat([header, Buffer.from(name + "\0")]);
+  return Buffer.concat([prefix, Buffer.alloc((4 - prefix.length % 4) % 4), value, Buffer.alloc((4 - value.length % 4) % 4)]);
+}
+const cpioTrailer = () => cpioEntry("TRAILER!!!", "", { mode: 0 });
+const cpio = (files = payload) => Buffer.concat([...files.map(([name, data, options]) => cpioEntry(name, data, options)), cpioTrailer()]);
+
+test("original CPIO reader binds all resources without extraction", () => {
+  assert.deepEqual(inspectCpio(cpio(), expected), inspectTar(tar(), expected));
+  const prefixed = payload.map(([name, data]) => ["./" + name, data]);
+  assert.deepEqual(inspectCpio(cpio(prefixed), expected), inspectTar(tar(), expected));
+  assert.equal(inspectCpio(Buffer.concat([cpio(), Buffer.alloc(512)]), expected).length, payload.length);
+  assert.throws(() => inspectCpio(cpio(), { ...expected, application: "0".repeat(64) }));
+  assert.throws(() => inspectCpio(cpio(), { ...expected, model: "0".repeat(64) }));
+});
+
+test("CPIO rejects ambiguous paths, links, devices and privileged entries", () => {
+  for (const name of ["../escape", "/absolute", "usr//bad", "usr/./bad", "usr/../bad", "bad\0name", "bad\nname", "usr/bin/lockedin-flow-desktop"]) {
+    assert.throws(() => inspectCpio(cpio([...payload, [name, "x"]]), expected));
+  }
+  for (const options of [{ links: 2 }, { links: 0 }, { mode: 0o120777 }, { mode: 0o020600 },
+    { mode: 0o104755 }, { mode: 0o100000 + 0x80000000 }, { rmajor: 1 }, { checksum: 1 }, { mode: 0o040755 }]) {
+    assert.throws(() => inspectCpio(cpio([...payload, ["extra", "x", options]]), expected));
+  }
+  assert.throws(() => inspectCpio(cpio([...payload, ["usr", "x"]]), expected));
+  const withDirectory = cpio([...payload, ["usr", "", { mode: 0o040755, links: 2 }]]);
+  assert.equal(inspectCpio(withDirectory, expected).length, payload.length + 1);
+});
+
+test("CPIO requires full framing, bounded fields and one final trailer", () => {
+  const valid = cpio();
+  for (let size = 0; size < valid.length; size++) {
+    assert.throws(() => inspectCpio(valid.subarray(0, size), expected));
+  }
+  for (const offset of [0, 6, 109, 110 + Buffer.byteLength(payload[0][0])]) {
+    const changed = Buffer.from(valid);
+    changed[offset] = 255;
+    assert.throws(() => inspectCpio(changed, expected));
+  }
+  for (const options of [{ nameSize: 0 }, { nameSize: 0xffffffff }, { size: 0xffffffff }]) {
+    assert.throws(() => inspectCpio(cpio([[payload[0][0], payload[0][1], options], ...payload.slice(1)]), expected));
+  }
+  assert.throws(() => inspectCpio(Buffer.concat([valid, cpio()]), expected));
+  assert.throws(() => inspectCpio(Buffer.concat([valid, Buffer.from([1])]), expected));
+  assert.throws(() => inspectCpio(Buffer.concat([valid.subarray(0, valid.length - cpioTrailer().length), cpioEntry("TRAILER!!!", "x", { mode: 0 })]), expected));
+  assert.throws(() => inspectCpio("not bytes", expected));
+});
 
 test("payload hashes bind the exact binary, model and four compliance resources", () => {
   const files = inspectTar(tar(), expected);

@@ -146,6 +146,69 @@ export function inspectTar(bytes, expected) {
     entries.set(name, entry);
   }
   if (!ended) fail("archive-framing");
+  return verifyEntries(entries, expected);
+}
+
+// Original newc CPIO bytes; never extract or rewrite the payload. Deliberately
+// narrower than general CPIO: one terminated archive, regular files/directories,
+// no links/devices/privileged modes. RPM framing/decompression is a separate gate.
+// Layout: kernel.org/doc/html/latest/driver-api/early-userspace/buffer-format.html
+export function inspectCpio(bytes, expected) {
+  if (!Buffer.isBuffer(bytes) || bytes.length > limits.payload) fail("archive-framing");
+  const entries = new Map();
+  let cursor = 0;
+  let ended = false;
+  const aligned = (end) => {
+    const next = Math.ceil(end / 4) * 4;
+    if (next > bytes.length || bytes.subarray(end, next).some((byte) => byte !== 0)) fail("archive-framing");
+    return next;
+  };
+  while (cursor + 110 <= bytes.length) {
+    const header = bytes.subarray(cursor, cursor + 110);
+    if (header.subarray(0, 6).toString("ascii") !== "070701"
+        || header.some((byte) => byte > 127)) fail();
+    const fields = [];
+    for (let offset = 6; offset < 110; offset += 8) {
+      const value = header.subarray(offset, offset + 8).toString("ascii");
+      if (!/^[a-fA-F0-9]{8}$/.test(value)) fail();
+      fields.push(Number.parseInt(value, 16));
+    }
+    const [, mode, , , links, , size, , , rmajor, rminor, nameSize, checksum] = fields;
+    cursor += 110;
+    if (nameSize < 2 || nameSize > 259 || cursor + nameSize > bytes.length
+        || size > limits.file) fail("archive-bounds");
+    const rawName = bytes.subarray(cursor, cursor + nameSize);
+    if (rawName.at(-1) !== 0 || rawName.subarray(0, -1).some((byte) => byte < 32 || byte > 126)) fail("archive-path");
+    const nameText = rawName.subarray(0, -1).toString("ascii");
+    cursor = aligned(cursor + nameSize);
+    if (checksum !== 0 || rmajor !== 0 || rminor !== 0) fail();
+    if (nameText === "TRAILER!!!") {
+      if (size !== 0 || mode !== 0 || bytes.subarray(cursor).some((byte) => byte !== 0)) fail("archive-framing");
+      ended = true;
+      break;
+    }
+    const kind = mode & 0o170000;
+    if (![0o100000, 0o040000].includes(kind) || (mode & ~0o170777)
+        || links < 1 || (kind === 0o100000 && links !== 1)
+        || (kind === 0o040000 && size !== 0)) fail("archive-entry-type");
+    const name = archivePath(nameText, kind === 0o040000);
+    if (entries.size >= limits.entries || entries.has(name)) fail("archive-path");
+    if (cursor + size > bytes.length) fail("archive-bounds");
+    const data = bytes.subarray(cursor, cursor + size);
+    cursor = aligned(cursor + size);
+    const entry = { pathSha256: digest(name), type: kind === 0o040000 ? "directory" : "file", mode: mode & 0o777, bytes: size };
+    if (kind === 0o100000) {
+      entry.sha256 = digest(data);
+      entry.elf = data.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]));
+      entry.componentMapping = "unresolved";
+    }
+    entries.set(name, entry);
+  }
+  if (!ended) fail("archive-framing");
+  return verifyEntries(entries, expected);
+}
+
+function verifyEntries(entries, expected) {
   for (const name of entries.keys()) {
     const segments = name.split("/");
     while (segments.length > 1) {
