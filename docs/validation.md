@@ -5,6 +5,23 @@ keeps source validation separate from installed-product acceptance.
 
 ## Package validation: 3 October 2026
 
+[Native run 37155075227](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37155075227)
+passed Windows and Linux installer checks for source
+`f4ad6755d1b8f20f19a9b7a40b7f4f8fac2efc07`, tested at merge checkout
+`0027db171da80d812f56784c8c4871ed808ef12f`. Its retained report passes strict
+schema and execution-identity validation, with SHA-256
+`2e657b13449d6a7fdc7241a69fba05fff8e6510cd415fd01a1e2f6fec5f0d981`.
+However, its optional host-file reference collector returned **unavailable**.
+The green payload checks do not establish library-source or notice mapping.
+A full installed-database regression now runs before native compilation; its
+failure diagnostics use fixed categories without raw paths or package data.
+That regression reproduced `database-encoding` on the native Ubuntu runner in
+[run 37157672454](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37157672454),
+before compilation. The parser now accepts valid UTF-8 filenames in the database
+while retaining ASCII package-identity and runtime-path allowlists. Malformed
+UTF-8, control characters and unsafe paths remain rejected or excluded. Native
+confirmation of the corrected full-database check and collector is pending.
+
 [Native run 37148286084](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37148286084)
 passed on Windows and Linux for source
 `be2d2a75e8150e51980f2c1351161a6e043334d7` at actual merge checkout
@@ -26,9 +43,10 @@ The AppImage contains 174 ELF files. Its Cargo source inventory still has 349
 components, with 346 retained-text and three source-reference-only records;
 these are different inventory scopes, not equivalent component counts. File
 hashes do not close native source/version or license mapping. The subsequent
-exact host-file reference collector is locally tested but awaits its own native
-run. It preserves unmatched/ambiguous files and does not turn a host copyright
-hash into a shipped notice or license approval. See [security boundaries](../desktop/SECURITY.md#exact-host-file-references).
+exact host-file reference collector is locally tested, but its first native
+collection was unavailable as recorded above. It preserves unmatched/ambiguous
+files and does not turn a host copyright hash into a shipped notice or license
+approval. See [security boundaries](../desktop/SECURITY.md#exact-host-file-references).
 
 ### Earlier RPM and AppImage implementation evidence
 

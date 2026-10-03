@@ -27,8 +27,13 @@ const docPath = (value) => typeof value === "string" && value.length <= 512
 // The returned raw identities/paths stay in process; only hashes reach reports.
 export function parseDpkgReferences(bytes) {
   if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > hostReferenceLimits.database) fail("database-bounds");
-  if (bytes.some((b) => b > 126 || (b < 32 && b !== 9 && b !== 10))) fail("database-encoding");
-  const text = bytes.toString("ascii");
+  if (bytes.some((b) => b === 127 || (b < 32 && b !== 9 && b !== 10))) fail("database-encoding");
+  // Installed packages can own UTF-8 documentation filenames. Reject malformed
+  // encoding rather than stripping high bits or using replacement characters.
+  // Identity fields and eligible runtime paths retain their ASCII allowlists.
+  let text;
+  try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); }
+  catch { fail("database-encoding"); }
   if (!text.endsWith("\n.\n")) fail("database-framing");
   const records = text.slice(0, -3).split("\n.\n"), result = [], identities = new Set();
   if (records.length > hostReferenceLimits.packages) fail("database-records");

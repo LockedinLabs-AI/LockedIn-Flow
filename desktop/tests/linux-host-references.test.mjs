@@ -48,6 +48,25 @@ test("dpkg malformed, duplicate, redirected, truncated and unbounded records fai
     assert.throws(() => parseDpkgReferences(bytes), /content withheld/);
 });
 
+test("UTF-8 documentation paths do not disable exact ASCII runtime references", async () => {
+  const db = database(["/usr/share/doc/libsynthetic/exemples/français.txt", "/usr/share/doc/libsynthetic/日本語.txt",
+    "/usr/lib/libsynthetic.so.1", "/usr/lib/éxcluded.so"]);
+  const parsed = parseDpkgReferences(db);
+  assert.deepEqual(parsed[0].paths, ["/usr/lib/libsynthetic.so.1"]);
+  const io = syntheticIO(db, { "/usr/lib/libsynthetic.so.1": library });
+  const evidence = await collectHostReferences(packageFiles(), io);
+  assert.equal(evidence.packages[0].files[0].status, "exact-host-file-match");
+  assert.equal(evidence.databaseSha256, hash(db));
+  assert.deepEqual(io.reads, ["/usr/lib/libsynthetic.so.1"]);
+  assert.ok(!JSON.stringify(evidence).includes("français"));
+  // No lossy decoding, metadata broadening, control characters or BOM removal.
+  for (const bad of [Buffer.concat([db.subarray(0, -3), Buffer.from([0xc3, 0x28]), db.subarray(-3)]),
+    database(["/usr/share/doc/libsynthetic/\u007fvalue"]), database([], header.replace("libsynthetic", "libéxample")),
+    Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), db])]) {
+    assert.throws(() => parseDpkgReferences(bad), /content withheld/);
+  }
+});
+
 test("native dpkg formatting parses without interpreting its paths as commands", { skip: process.platform !== "linux" || !existsSync("/usr/bin/dpkg-query") }, () => {
   const bytes = execFileSync("/usr/bin/dpkg-query", ["--admindir=/var/lib/dpkg", "--show", "--showformat=" + dpkgReferenceFormat, "dpkg"],
     { maxBuffer: hostReferenceLimits.database, timeout: 10000, env: { PATH: "/usr/bin:/bin", LANG: "C", LC_ALL: "C" } });

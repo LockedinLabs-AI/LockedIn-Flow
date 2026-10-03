@@ -242,8 +242,14 @@ Collector failure records only `host-reference-collection-failed`; it cannot
 reuse another run's evidence. Report validation binds every reference to the
 actual package and file hashes. Existing `componentMapping`, `licenseReview`
 and release disposition remain unresolved even when exact host bytes match.
-Native validation of this new collector is pending; synthetic tests and a native
-dpkg output-format check do not establish complete AppImage attribution.
+The first native collection returned unavailable, despite passing payload checks;
+see [validation evidence](../docs/validation.md). The full installed database is
+now tested before compilation, with fixed-category diagnostics. Valid UTF-8
+documentation filenames no longer invalidate the database; malformed encoding
+is rejected. Package identities and eligible runtime paths keep ASCII allowlists;
+non-ASCII runtime paths cannot supply matches. Native confirmation is pending.
+Synthetic tests and a single-package dpkg format check do not establish complete
+AppImage attribution.
 
 CI retains only a schema-validated, fixed JSON report for pull requests, including
 failed/partial inspection results. Its acceptance step fails unless all three
