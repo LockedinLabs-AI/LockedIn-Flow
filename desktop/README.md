@@ -55,7 +55,7 @@ than assumed.
 
 ## Build from source
 
-Use a native build host for the target OS, Node.js 22+, and Rust 1.94.1. Node is a
+Use a native build host for the target OS, Node.js 22.15+, and Rust 1.94.1. Node is a
 build tool, not an installed application dependency. These are repository npm
 commands, not a claim that an end-user npm package has been published.
 

@@ -43,7 +43,7 @@ async function main() {
     coverage: "File digests and staged-resource comparison, not component/version identification, license closure, signatures or installed-device acceptance",
     pathPolicy: "Archive names, link targets, dependency strings, tool output and host paths withheld; SHA-256 identifiers permit private reconciliation",
     sourceInventorySha256: expected["SBOM.cdx.json"],
-    unresolved: ["component-source-version-mapping", "native-license-and-notice-mapping", "package-control-scripts-and-signatures", "appimage-payload"],
+    unresolved: ["component-source-version-mapping", "native-license-and-notice-mapping", "package-control-scripts-and-signatures"],
     packages: [],
   };
   if (inventorySummary) report.inventorySummary = inventorySummary;
@@ -58,12 +58,22 @@ async function main() {
         if (candidates.length !== 1 || !candidates[0].isFile()) throw new Error();
         const bytes = await boundedFile(path.join(directory, candidates[0].name), limits.package);
         record = { ...record, bytes: bytes.length, sha256: digest(bytes) };
+        if (format === "appimage") {
+          // linuxdeploy can patch/strip ELF after Tauri's APP token replacement.
+          // Bind to its separately staged output; never normalize package bytes.
+          const reference = path.join(directory, "LockedIn Flow.AppDir/usr/bin/lockedin-flow-desktop");
+          if (await realpath(reference) !== reference) throw new Error();
+          const staged = await boundedFile(reference, limits.file);
+          if (!staged.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]))) throw new Error();
+          applicationDigests.appimage = digest(staged);
+        }
         const snapshot = path.join(scratch, "input" + extension);
         await writeFile(snapshot, bytes, { flag: "wx", mode: 0o600 });
         record = inspectPackage(format, snapshot, bytes, { ...expected, application: applicationDigests[format] });
       } catch { /* Fixed classification only; do not expose file paths/tool errors. */ }
       report.packages.push(record);
     }
+    if (report.packages[2].status !== "payload-inspected") report.unresolved.push("appimage-payload");
     // Exclusive creation preserves an earlier receipt instead of overwriting it.
     await writeFile(path.join(bundle, "LINUX-PACKAGE-EVIDENCE.json"), JSON.stringify(report, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   } finally { await rm(scratch, { recursive: true, force: true }); }

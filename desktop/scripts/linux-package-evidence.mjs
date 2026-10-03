@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { gunzipSync } from "node:zlib";
+import { squashfsEntries } from "./squashfs-evidence.mjs";
 
 export const limits = Object.freeze({ package: 512 * 1024 ** 2, payload: 768 * 1024 ** 2, file: 256 * 1024 ** 2, entries: 10000, metadata: 1024 * 1024 });
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -37,6 +38,43 @@ class EvidenceFailure extends Error {
 const fail = (category = "archive-header") => { throw new EvidenceFailure(category); };
 const names = new Set(["lockedin-flow", "locked-in-flow", "lockedin-flow-desktop", "locked-in-flow-desktop"]);
 const required = ["SBOM.cdx.json", "THIRD-PARTY-NOTICES.txt", "LICENSE.txt", "MODEL.json"];
+
+// Narrow Linux x86-64 type-2 boundary reader. Match the runtime's section-table
+// rule, then ensure no other file-backed section/segment extends into its payload.
+// This locates SquashFS only; it does not inspect filesystem entries or execute ELF.
+export function appImageFilesystemOffset(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 160 || bytes.length > limits.package
+      || !bytes.subarray(0, 7).equals(Buffer.from([127, 69, 76, 70, 2, 1, 1]))
+      || !bytes.subarray(8, 11).equals(Buffer.from([65, 73, 2]))
+      || ![2, 3].includes(bytes.readUInt16LE(16)) || bytes.readUInt16LE(18) !== 62
+      || bytes.readUInt32LE(20) !== 1 || bytes.readUInt16LE(52) !== 64) fail();
+  const read64 = (offset) => {
+    const value = bytes.readBigUInt64LE(offset);
+    if (value > BigInt(bytes.length)) fail("archive-bounds");
+    return Number(value);
+  };
+  const table = read64(40), size = bytes.readUInt16LE(58), count = bytes.readUInt16LE(60);
+  if (table < 64 || size !== 64 || count < 1 || count > 4096 || table + size * count > bytes.length) fail("archive-bounds");
+  const tableEnd = table + size * count, last = tableEnd - size;
+  const offset = Math.max(tableEnd, read64(last + 24) + read64(last + 32));
+  if (offset + 96 > bytes.length) fail("archive-bounds");
+  for (let i = 0; i < count; i++) {
+    const at = table + size * i;
+    if (bytes.readUInt32LE(at + 4) !== 8 && read64(at + 24) + read64(at + 32) > offset) fail("archive-bounds");
+  }
+  const programs = read64(32), programSize = bytes.readUInt16LE(54), programCount = bytes.readUInt16LE(56);
+  if (programCount < 1 || programCount > 4096 || programSize !== 56 || programs < 64
+      || programs + programSize * programCount > offset) fail("archive-bounds");
+  for (let i = 0; i < programCount; i++) {
+    const at = programs + programSize * i;
+    if (read64(at + 8) + read64(at + 32) > offset) fail("archive-bounds");
+  }
+  if (!bytes.subarray(offset, offset + 4).equals(Buffer.from("hsqs"))
+      || bytes.readUInt16LE(offset + 28) !== 4 || bytes.readUInt16LE(offset + 30) !== 0) fail();
+  const used = read64(offset + 40);
+  if (used < 96 || offset + used > bytes.length) fail("archive-bounds");
+  return offset;
+}
 
 // Locate the original payload without rpm2cpio/tar normalization. RPM metadata
 // semantics/signatures still require librpm; this only validates bounded framing
@@ -339,10 +377,25 @@ export function inspectPackage(format, snapshot, bytes, expected, run = standard
   if (!["deb", "rpm", "appimage"].includes(format) || bytes.length < 64 || bytes.length > limits.package) fail();
   const result = { format, bytes: bytes.length, sha256: digest(bytes), status: "unverified", licenseReview: "unresolved" };
   if (format === "appimage") {
-    // Never invoke --appimage-extract: that runs the supplied ELF. A reviewed
-    // SquashFS-offset reader is not yet present; absence must remain explicit.
+    // Read the original filesystem in memory. Never invoke --appimage-extract,
+    // a supplied executable, mount, extractor or archive-normalization tool.
     if (!bytes.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70])) || !bytes.subarray(8, 11).equals(Buffer.from([65, 73, 2]))) fail();
-    return { ...result, reason: "appimage-payload-reader-not-implemented", metadata: null, files: null };
+    let failureStage = "archive-header";
+    try {
+      const offset = appImageFilesystemOffset(bytes);
+      failureStage = "archive-validation";
+      const entries = squashfsEntries(bytes.subarray(offset), limits);
+      failureStage = "resource-validation";
+      const application = entries.get("usr/bin/lockedin-flow-desktop"), launcher = entries.get("AppRun");
+      const launchTarget = launcher?.type === "symlink"
+        ? [...entries.values()].find((entry) => entry.pathSha256 === launcher.resolvedPathSha256) : launcher;
+      if (application?.type !== "file" || !(application.mode & 0o111)
+          || launchTarget?.type !== "file" || !(launchTarget.mode & 0o111)) fail("resource-application-format");
+      return { ...result, status: "payload-inspected", metadata: null, files: verifyEntries(entries, expected) };
+    } catch (error) {
+      if (error instanceof EvidenceFailure) failureStage = error.category;
+      return { ...result, reason: "tool-or-payload-validation-failed", failureStage, metadata: null, files: null };
+    }
   }
   if (format === "deb" ? bytes.subarray(0, 8).toString("ascii") !== "!<arch>\n" : !bytes.subarray(0, 4).equals(Buffer.from([237, 171, 238, 219]))) fail();
   let failureStage = "identity-query";

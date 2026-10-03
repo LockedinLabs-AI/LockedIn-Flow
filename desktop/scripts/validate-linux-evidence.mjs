@@ -33,7 +33,7 @@ function metadata(value, format) {
   deps.recordSha256.forEach(hash);
 }
 
-function files(entries, inventoryHash) {
+function files(entries, inventoryHash, format) {
   if (!Array.isArray(entries) || entries.length < 6 || entries.length > 10000) fail();
   const paths = new Set(), resources = new Set();
   const labels = ["application", "pinned-model", "SBOM.cdx.json", "THIRD-PARTY-NOTICES.txt", "LICENSE.txt", "MODEL.json"];
@@ -42,6 +42,10 @@ function files(entries, inventoryHash) {
     if (file?.type === "directory") {
       keys(file, base);
       equal(file.bytes, 0);
+    } else if (file?.type === "symlink" && format === "appimage") {
+      keys(file, [...base, "targetSha256", "resolvedPathSha256"]);
+      hash(file.targetSha256); hash(file.resolvedPathSha256);
+      integer(file.bytes, 1, 256);
     } else {
       keys(file, [...base, "sha256", "elf", "componentMapping"], ["verifiedResource"]);
       equal(file.type, "file");
@@ -61,15 +65,17 @@ function files(entries, inventoryHash) {
     integer(file.mode, 0, 0o777);
     integer(file.bytes, 0, 256 * 1024 ** 2);
   }
+  const destinations = new Set(entries.filter((entry) => entry.type !== "symlink").map((entry) => entry.pathSha256));
+  for (const file of entries.filter((entry) => entry.type === "symlink")) if (!destinations.has(file.resolvedPathSha256)) fail();
   if (resources.size !== labels.length) fail();
 }
 
 function packageRecord(value, expectedFormat, inventoryHash) {
   if (value?.status === "payload-inspected") {
-    if (!["deb", "rpm"].includes(expectedFormat)) fail(); // AppImage original reader remains unavailable.
     keys(value, ["format", "bytes", "sha256", "status", "licenseReview", "metadata", "files"]);
-    metadata(value.metadata, expectedFormat);
-    files(value.files, inventoryHash);
+    if (expectedFormat === "appimage") equal(value.metadata, null);
+    else metadata(value.metadata, expectedFormat);
+    files(value.files, inventoryHash, expectedFormat);
   } else {
     const base = ["format", "status", "reason", "licenseReview"];
     equal(value?.status, "unverified");
@@ -77,7 +83,7 @@ function packageRecord(value, expectedFormat, inventoryHash) {
       keys(value, base, ["bytes", "sha256"]);
       if (Object.hasOwn(value, "bytes") !== Object.hasOwn(value, "sha256")) fail();
     } else {
-      keys(value, [...base, "bytes", "sha256", "metadata", "files"], expectedFormat === "deb" && value.reason === "tool-or-payload-validation-failed" ? ["failureStage"] : []);
+      keys(value, [...base, "bytes", "sha256", "metadata", "files"], ["deb", "appimage"].includes(expectedFormat) && value.reason === "tool-or-payload-validation-failed" ? ["failureStage"] : []);
       if (Object.hasOwn(value, "failureStage") && !["identity-query", "dependency-query", "payload-read", "metadata-validation", "archive-validation", "archive-header", "archive-bounds", "archive-framing", "archive-entry-type", "archive-checksum", "archive-path", "resource-validation", "resource-model-count", "resource-model-hash", "resource-compliance-count", "resource-compliance-location", "resource-compliance-hash", "resource-application-missing", "resource-application-format", "resource-application-hash"].includes(value.failureStage)) fail();
       equal(value.files, null);
       if (value.reason === "rpm-original-payload-validation-unavailable") {
@@ -85,7 +91,8 @@ function packageRecord(value, expectedFormat, inventoryHash) {
         metadata(value.metadata, "rpm");
       } else {
         equal(value.metadata, null);
-        equal(value.reason, expectedFormat === "appimage" ? "appimage-payload-reader-not-implemented" : "tool-or-payload-validation-failed");
+        if (value.reason !== "tool-or-payload-validation-failed"
+            && !(expectedFormat === "appimage" && value.reason === "appimage-payload-reader-not-implemented")) fail();
       }
     }
   }
@@ -122,7 +129,9 @@ export function reviewEnvelope(bytes, context) {
   equal(report.coverage, "File digests and staged-resource comparison, not component/version identification, license closure, signatures or installed-device acceptance");
   equal(report.pathPolicy, "Archive names, link targets, dependency strings, tool output and host paths withheld; SHA-256 identifiers permit private reconciliation");
   hash(report.sourceInventorySha256);
-  equal(JSON.stringify(report.unresolved), JSON.stringify(["component-source-version-mapping", "native-license-and-notice-mapping", "package-control-scripts-and-signatures", "appimage-payload"]));
+  const unresolved = ["component-source-version-mapping", "native-license-and-notice-mapping", "package-control-scripts-and-signatures"];
+  if (report.packages?.[2]?.status !== "payload-inspected") unresolved.push("appimage-payload");
+  equal(JSON.stringify(report.unresolved), JSON.stringify(unresolved));
   if (!Array.isArray(report.packages) || report.packages.length !== 3) fail();
   ["deb", "rpm", "appimage"].forEach((format, index) => packageRecord(report.packages[index], format, report.sourceInventorySha256));
   if (Object.hasOwn(report, "inventorySummary")) {
@@ -184,7 +193,7 @@ async function main() {
     inspectorExitCode: Number(process.env.FLOW_INSPECTOR_EXIT),
     inspectionStartedAt: process.env.FLOW_INSPECTION_STARTED_AT,
   });
-  console.log("Sanitized review JSON prepared; payload inspection and release acceptance remain incomplete.");
+  console.log("Sanitized review JSON prepared; this does not establish release acceptance.");
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

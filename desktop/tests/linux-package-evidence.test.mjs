@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
-import { digest, debApplicationDigest, linuxApplicationDigest, readRpmPayload, inspectTar, inspectCpio, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
+import { digest, debApplicationDigest, linuxApplicationDigest, readRpmPayload, appImageFilesystemOffset, inspectTar, inspectCpio, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
 
 // Only synthetic, in-memory USTAR fixtures. No application or model is run.
 const resourceRoot = "usr/lib/lockedin-flow-desktop";
@@ -52,6 +52,48 @@ function packageBytes(format) {
   if (format === "appimage") { bytes.set([127, 69, 76, 70]); bytes.set([65, 73, 2], 8); }
   return bytes;
 }
+
+function syntheticAppImage(sectionAfterTable = false) {
+  const out = Buffer.alloc(512);
+  out.set([127, 69, 76, 70, 2, 1, 1]); out.set([65, 73, 2], 8);
+  out.writeUInt16LE(2, 16); out.writeUInt16LE(62, 18); out.writeUInt32LE(1, 20);
+  out.writeBigUInt64LE(64n, 32); out.writeBigUInt64LE(128n, 40);
+  out.writeUInt16LE(64, 52); out.writeUInt16LE(56, 54); out.writeUInt16LE(1, 56);
+  out.writeUInt16LE(64, 58); out.writeUInt16LE(2, 60);
+  out.writeUInt32LE(1, 64); out.writeBigUInt64LE(120n, 96);
+  out.writeUInt32LE(1, 196);
+  out.writeBigUInt64LE(sectionAfterTable ? 256n : 120n, 216);
+  out.writeBigUInt64LE(sectionAfterTable ? 32n : 8n, 224);
+  const offset = sectionAfterTable ? 288 : 256;
+  out.write("hsqs", offset); out.writeUInt16LE(4, offset + 28);
+  out.writeBigUInt64LE(96n, offset + 40);
+  return out;
+}
+
+test("AppImage filesystem boundary follows ELF structure without executing runtime", () => {
+  assert.equal(appImageFilesystemOffset(syntheticAppImage()), 256);
+  assert.equal(appImageFilesystemOffset(syntheticAppImage(true)), 288);
+  const decoy = syntheticAppImage(); decoy.write("hsqs", 120);
+  assert.equal(appImageFilesystemOffset(decoy), 256);
+});
+
+test("AppImage boundary rejects wrong targets, overflows, absent tables and truncated superblocks", () => {
+  const valid = syntheticAppImage();
+  for (let length = 0; length < 352; length++) assert.throws(() => appImageFilesystemOffset(valid.subarray(0, length)));
+  for (const offset of [0, 4, 5, 6, 8, 10, 16, 18, 20, 52, 54, 56, 58, 60, 256, 284, 286]) {
+    const changed = Buffer.from(valid); changed[offset] ^= 255;
+    assert.throws(() => appImageFilesystemOffset(changed));
+  }
+  for (const offset of [32, 40, 72, 96, 216, 224, 296]) {
+    const changed = Buffer.from(valid); changed.writeBigUInt64LE(0xffffffffffffffffn, offset);
+    assert.throws(() => appImageFilesystemOffset(changed));
+  }
+  const hidden = Buffer.from(valid); hidden.writeUInt32LE(1, 132); hidden.writeBigUInt64LE(300n, 152); hidden.writeBigUInt64LE(10n, 160);
+  assert.throws(() => appImageFilesystemOffset(hidden));
+  const segment = Buffer.from(valid); segment.writeBigUInt64LE(300n, 96);
+  assert.throws(() => appImageFilesystemOffset(segment));
+  assert.throws(() => appImageFilesystemOffset(null));
+});
 
 function cpioEntry(name, data, overrides = {}) {
   const value = Buffer.from(data);
@@ -482,12 +524,13 @@ test("tool errors and malformed payloads stay unverified with no raw diagnostics
   assert.throws(() => standardTool(process.execPath, ["-e", "process.stdout.write('x'.repeat(4096))"], undefined, 128), /details withheld/);
 });
 
-test("AppImage is hashed but explicitly unverified; its runtime is never invoked", () => {
+test("malformed AppImage remains unverified; its runtime is never invoked", () => {
   const bytes = packageBytes("appimage");
   const report = inspectPackage("appimage", "/synthetic/app.AppImage", bytes, expected, () => assert.fail("Must not run any AppImage helper"));
   assert.equal(report.sha256, digest(bytes));
   assert.equal(report.status, "unverified");
-  assert.equal(report.reason, "appimage-payload-reader-not-implemented");
+  assert.equal(report.reason, "tool-or-payload-validation-failed");
+  assert.equal(report.failureStage, "archive-header");
   assert.equal(report.files, null);
   assert.throws(() => inspectPackage("appimage", "unused", packageBytes("deb"), expected));
 });

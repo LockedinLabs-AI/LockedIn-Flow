@@ -82,6 +82,37 @@ test("inspected RPM evidence retains unresolved release and AppImage boundaries"
   reject(report);
 });
 
+test("complete AppImage payload evidence permits exit zero but never release approval", () => {
+  const report = fixture();
+  report.packages[1] = { ...structuredClone(report.packages[0]), format: "rpm", sha256: hash("synthetic-rpm") };
+  report.packages[1].metadata.architecture = "x86_64";
+  report.packages[2] = { ...structuredClone(report.packages[0]), format: "appimage", metadata: null, sha256: hash("synthetic-appimage") };
+  report.packages[2].files.push({ pathSha256: hash("synthetic-link"), type: "symlink", mode: 0o777, bytes: 10,
+    targetSha256: hash("synthetic-target"), resolvedPathSha256: report.packages[2].files[0].pathSha256 });
+  report.unresolved.pop();
+  const ctx = { ...context(), inspectorExitCode: 0 };
+  assert.equal(reviewEnvelope(encode(report), ctx).disposition, "incomplete-not-release-acceptance");
+  reject(report); // Complete payload inspection cannot report a partial exit.
+  for (const mutate of [
+    (r) => r.packages[2].files.pop() && r.packages[2].files.pop(),
+    (r) => { r.packages[2].files.at(-1).target = "unreviewed-path"; },
+    (r) => { r.packages[2].files.at(-1).resolvedPathSha256 = hash("missing"); },
+    (r) => { r.packages[2].files.at(-1).verifiedResource = "application"; },
+    (r) => { r.packages[2].metadata = r.packages[0].metadata; },
+    (r) => { r.packages[0].files.push(r.packages[2].files.at(-1)); },
+    (r) => { r.packages[2].files[0].mode = 0o4755; },
+    (r) => { r.unresolved.push("appimage-payload"); },
+    (r) => { r.packages[2].licenseReview = "approved"; },
+  ]) { const invalid = structuredClone(report); mutate(invalid); reject(invalid, ctx); }
+});
+
+test("AppImage failures retain only fixed diagnostics and preserve historical reports", () => {
+  const report = fixture();
+  Object.assign(report.packages[2], { reason: "tool-or-payload-validation-failed", failureStage: "archive-validation" });
+  assert.equal(reviewEnvelope(encode(report), context()).evidence.packages[2].status, "unverified");
+  report.packages[2].failureStage = "unreviewed tool output"; reject(report);
+});
+
 test("exit 1, unexpected exits and a false exit 0 never authorize a partial or stale report", () => {
   for (const inspectorExitCode of [0, 1, 3, -1, "2", null]) reject(fixture(), { ...context(), inspectorExitCode });
   for (const index of [1, 2]) {

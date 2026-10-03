@@ -3,7 +3,7 @@
 This page records what the current LockedIn Flow candidate has actually passed and
 keeps source validation separate from installed-product acceptance.
 
-## RPM payload verification: native validation pending
+## Package validation: 3 October 2026
 
 The candidate now reads the original RPM framing and bounded gzip payload,
 validates its newc CPIO archive without extraction or execution, and compares
@@ -12,10 +12,25 @@ The executable reference includes the RPM-specific marker written by pinned
 Tauri CLI 2.12.0. Malformed headers, unsafe archive entries, corrupted compressed
 data, missing resources and altered file digests remain rejected.
 
-Local tooling validation passed 200 tests with two Windows-only skips. These
-synthetic tests are not native RPM acceptance. AppImage payload inspection,
-component/license reconciliation, signing and installed-device acceptance remain
-separate requirements; a retained payload report does not authorize release.
+[Native run 37135860470](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37135860470)
+tested source `595273845eabcbcc49960da731c4ee30c63988f9` at merge checkout
+`65be42a21eede9ca0dbefdead65a42d3b4f4a685`. DEB (26 entries) and RPM (11 entries)
+both passed payload inspection, including exact application, model and four
+compliance-file hashes. Windows native validation passed. Linux synthetic offline
+recognition and installed-DEB launch, integrity and removal checks passed; the
+overall Linux job failed only its final incomplete AppImage payload gate.
+General CI, security, dependency review and public-metadata checks passed.
+
+The subsequent AppImage reader locates the original SquashFS filesystem without
+executing the AppImage. It checks bounded gzip/zstd metadata and file blocks,
+directory/index consistency, inode reachability, fragments, hard links and safe
+relative links, then verifies required resources against staged references.
+Unit tests use synthetic inputs. A separate cross-check with the official
+SquashFS writer exercises real filesystem encoding; it is not an installed
+AppImage, microphone or device test. Native AppImage validation of this change
+is pending. Component/license reconciliation, signing and installed-device
+acceptance remain separate requirements; a retained payload report does not
+authorize release.
 
 ## Installed Linux launch gate
 
@@ -41,7 +56,7 @@ visible transcript while controls are disabled after a lost status connection.
 Its regression tests cover duplicate Stop/vocabulary requests, stale polls,
 and lost status. The native run below includes this correction.
 
-## Latest cross-platform validation: 29 September 2026
+## Earlier cross-platform validation: 29 September 2026
 
 Source `83b1ec79cbdc48307fbaf4c78e1bd43e2d6c65fb` completed
 [native validation](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/36554089355)

@@ -146,10 +146,12 @@ it does not run the prerequisite or replace an existing evidence report.
 
 After a reviewed native Linux build and the existing artifact verifier, run
 `node scripts/verify-linux-packages.mjs` from `desktop/`. The build host must
-already provide Node 22+, `dpkg-deb` and `rpm`.
+already provide Node 22.15+, `dpkg-deb` and `rpm`.
 The checker does not install tools, fetch dependencies, run package scripts,
-install packages or execute their binaries. Native DEB payload and RPM metadata acceptance
-is still pending; synthetic tests alone do not establish that acceptance.
+install packages or execute their binaries. Native DEB and RPM payload checks
+have passed for the candidate documented in [validation evidence](../docs/validation.md).
+AppImage native validation remains pending; filesystem fixtures alone do not
+establish installer acceptance.
 
 It requires a clean checkout matching the staged Linux inventory and lockfile
 hashes. It reads private snapshots of the final archives and queries DEB/RPM metadata.
@@ -168,8 +170,10 @@ general GNU-tar support; synthetic header tests do not establish native acceptan
 The application, model and four compliance resources must match staged digests.
 Input/archive size, entry count, member size
 and tool runtime/output limits are enforced. Traversal, duplicate paths, special
-files, privilege bits, extensions and all links are rejected conservatively;
-even a legitimate symlink leaves inspection unverified until support is reviewed.
+files, privilege bits and unsupported extensions are rejected conservatively.
+DEB and RPM links are rejected. AppImage supports only relative links that resolve
+to an existing file or directory within its in-memory tree; absolute, escaping,
+dangling, cyclic and through-nondirectory links are rejected.
 
 `target/release/bundle/LINUX-PACKAGE-EVIDENCE.json` is created exclusively with
 private file permissions; existing reports are not overwritten. It binds archive
@@ -182,20 +186,32 @@ Requirements declared by a package are not evidence of bundled libraries.
 File hashes and ELF magic do not identify component versions or license terms;
 those mappings and notice obligations remain explicitly unresolved.
 
-RPM retains queried metadata and its archive hash but **no payload verification**:
-there is no reviewed original-format/full-consumption reader. A rewritten CPIO
-stream is not evidence that all original payload bytes were inspected.
-AppImage also receives a hash but **no payload verification**: there is no
-reviewed SquashFS reader. Never substitute `--appimage-extract`, which runs the
-supplied executable. Control scripts, signatures, installed-device behavior and
-Windows input/license closure are also outside this check. Exit 2 records partial
-evidence, not acceptance; exit 1 means no report was recorded. Exit 0 would mean
-payload inspection only, not license or release approval.
+RPM inspection validates original header boundaries and the declared cpio/gzip
+payload, bounded decompression, and original newc entries. It does not rewrite
+the archive through a format converter.
 
-This command does not change CI report retention. Before a native acceptance run,
-review a report-only retention step, validate its sanitized output, and preserve
-all existing binary-upload restrictions. Keep the report even when inspection
-is incomplete; never turn that result into a passing release gate.
+AppImage inspection locates the filesystem from the x86-64 type-2 ELF structure,
+then reads the original SquashFS 4.0 metadata and file blocks in memory. Supported
+compression is gzip or zstd, with bounded decompression, entry counts, file sizes,
+metadata, nesting and link traversal. Extended attributes and special files are
+unsupported and fail closed. Inode reachability, directory indexes, data blocks,
+fragments, hard links and resolved symbolic links are checked before resource
+comparison. The application and AppRun launcher must be executable. Since
+linuxdeploy can patch or strip ELF files, the application reference comes from
+the separately staged AppDir binary; the model and four compliance files retain
+their independent build references. This is a staged-output comparison, not a
+claim of reproducible compilation or trusted launcher/library provenance.
+Never substitute `--appimage-extract`, which runs the supplied executable.
+
+Control scripts, signatures, installed-device behavior and Windows input/license
+closure remain outside this check. Exit 2 records partial evidence, not acceptance;
+exit 1 means no report was recorded. Exit 0 means payload inspection only, not
+license or release approval.
+
+CI retains only a schema-validated, fixed JSON report for pull requests, including
+failed/partial inspection results. Its acceptance step fails unless all three
+payloads pass and report validation/retention succeeds. Binary-upload restrictions
+are unchanged. A passing inspection still does not close the release gates above.
 
 ## Coexistence and support
 
