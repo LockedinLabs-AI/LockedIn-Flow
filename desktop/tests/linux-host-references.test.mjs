@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { collectHostReferences, parseDpkgReferences, reconcileHostReferences, validateHostReferences, hostReferenceScope, hostReferenceLimits, dpkgReferenceFormat } from "../scripts/linux-host-references.mjs";
+import { standardTool } from "../scripts/linux-package-evidence.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const library = Buffer.from([127, 69, 76, 70, 17, 18, 19]);
@@ -53,6 +54,24 @@ test("native dpkg formatting parses without interpreting its paths as commands",
   const records = parseDpkgReferences(bytes);
   assert.ok(records.every((r) => r.name === "dpkg"));
   if (process.arch === "x64") assert.equal(records.length, 1);
+});
+
+test("native full installed database parses before expensive installer compilation", { skip: process.platform !== "linux" || !existsSync("/usr/bin/dpkg-query") }, () => {
+  // The single-package format probe cannot represent the full runner database.
+  // standardTool withholds stdout/stderr on failure; parser errors contain only
+  // fixed classifications, not host paths or raw package identities.
+  const bytes = standardTool("/usr/bin/dpkg-query", ["--admindir=/var/lib/dpkg", "--show", "--showformat=" + dpkgReferenceFormat], undefined, hostReferenceLimits.database);
+  assert.ok(parseDpkgReferences(bytes).length > 0);
+});
+
+test("database diagnostics are fixed categories without raw input", () => {
+  for (const bytes of [Buffer.from("synthetic-private-value"), Buffer.from([0]), database([], header.replace("installed", "synthetic-private-status"))]) {
+    assert.throws(() => parseDpkgReferences(bytes), (error) => {
+      assert.match(error.message, /^Linux host-reference evidence rejected \(database-[a-z]+\); content withheld\.$/);
+      assert.ok(!error.message.includes("synthetic-private"));
+      return true;
+    });
+  }
 });
 
 test("collector matches complete original bytes, hashes metadata, and does not ship notices", async () => {

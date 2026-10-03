@@ -5,7 +5,12 @@ import { boundedFile, standardTool } from "./linux-package-evidence.mjs";
 export const hostReferenceScope = "exact-host-file-references-not-component-or-license-approval";
 export const hostReferenceLimits = Object.freeze({ database: 32 * 1024 ** 2, packages: 4096, paths: 750000, runtimePaths: 150000, file: 256 * 1024 ** 2, readBytes: 1024 ** 3, copyright: 2 * 1024 ** 2 });
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const fail = () => { throw new Error("Linux host-reference evidence rejected; content withheld."); };
+const failureCategories = new Set(["validation", "database-bounds", "database-encoding", "database-framing", "database-records", "database-metadata", "database-paths", "database-identity", "database-duplicates"]);
+const fail = (category = "validation") => {
+  // Fixed classifications only: never include database contents or tool errors.
+  if (!failureCategories.has(category)) category = "validation";
+  throw new Error("Linux host-reference evidence rejected (" + category + "); content withheld.");
+};
 const namePattern = /^[a-z0-9][a-z0-9+.-]{1,127}$/;
 const versionPattern = /^[0-9][A-Za-z0-9.+:~\-]{0,127}$/;
 // db-fsys:Files avoids localized diversion prose from --listfiles. The explicit
@@ -21,33 +26,33 @@ const docPath = (value) => typeof value === "string" && value.length <= 512
 // This is installed-database observation, NOT repository/archive authentication.
 // The returned raw identities/paths stay in process; only hashes reach reports.
 export function parseDpkgReferences(bytes) {
-  if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > hostReferenceLimits.database
-      || bytes.some((b) => b > 126 || (b < 32 && b !== 9 && b !== 10))) fail();
+  if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > hostReferenceLimits.database) fail("database-bounds");
+  if (bytes.some((b) => b > 126 || (b < 32 && b !== 9 && b !== 10))) fail("database-encoding");
   const text = bytes.toString("ascii");
-  if (!text.endsWith("\n.\n")) fail();
+  if (!text.endsWith("\n.\n")) fail("database-framing");
   const records = text.slice(0, -3).split("\n.\n"), result = [], identities = new Set();
-  if (records.length > hostReferenceLimits.packages) fail();
+  if (records.length > hostReferenceLimits.packages) fail("database-records");
   let pathCount = 0;
   for (const record of records) {
     const lines = record.split("\n"), fields = lines.shift().split("\t");
-    if (fields.length !== 6 || fields.some((f) => f.length > 160)) fail();
+    if (fields.length !== 6 || fields.some((f) => f.length > 160)) fail("database-metadata");
     const [binary, version, architecture, source, sourceVersion, status] = fields;
-    if (!["not-installed", "config-files", "half-installed", "unpacked", "half-configured", "triggers-awaited", "triggers-pending", "installed"].includes(status)) fail();
+    if (!["not-installed", "config-files", "half-installed", "unpacked", "half-configured", "triggers-awaited", "triggers-pending", "installed"].includes(status)) fail("database-metadata");
     // db-fsys:Files prefixes each absolute filename with one formatting space
     // and may end in a newline. Consume that prefix, not arbitrary whitespace
     // in filenames (verified against native Ubuntu 22.04 dpkg-query output).
     if (lines.at(-1) === "") lines.pop();
     pathCount += lines.length;
-    if (pathCount > hostReferenceLimits.paths || lines.some((line) => !line.startsWith(" /") || line.length > 4097 || line.includes("\t"))) fail();
+    if (pathCount > hostReferenceLimits.paths || lines.some((line) => !line.startsWith(" /") || line.length > 4097 || line.includes("\t"))) fail("database-paths");
     const paths = lines.map((line) => line.slice(1));
     // Removed/partially installed records may lack version or source fields.
     if (status !== "installed") continue;
     const [name, qualifier, extra] = binary.split(":");
     if (!namePattern.test(name) || extra !== undefined || (qualifier !== undefined && qualifier !== architecture)
         || !versionPattern.test(version) || !/^[a-z0-9-]{1,32}$/.test(architecture)
-        || !namePattern.test(source) || !versionPattern.test(sourceVersion)) fail();
+        || !namePattern.test(source) || !versionPattern.test(sourceVersion)) fail("database-identity");
     const identity = JSON.stringify(["binary-dpkg-v1", binary, version, architecture]);
-    if (identities.has(binary)) fail();
+    if (identities.has(binary)) fail("database-duplicates");
     identities.add(binary);
     if (!["amd64", "all"].includes(architecture)) continue;
     result.push({ name, binaryIdentitySha256: hash(identity),
