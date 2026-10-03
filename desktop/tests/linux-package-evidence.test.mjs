@@ -4,7 +4,8 @@ import { mkdtemp, writeFile, symlink, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { digest, debApplicationDigest, linuxApplicationDigest, inspectTar, inspectCpio, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
+import { gzipSync } from "node:zlib";
+import { digest, debApplicationDigest, linuxApplicationDigest, readRpmPayload, inspectTar, inspectCpio, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
 
 // Only synthetic, in-memory USTAR fixtures. No application or model is run.
 const resourceRoot = "usr/lib/lockedin-flow-desktop";
@@ -63,6 +64,56 @@ function cpioEntry(name, data, overrides = {}) {
 }
 const cpioTrailer = () => cpioEntry("TRAILER!!!", "", { mode: 0 });
 const cpio = (files = payload) => Buffer.concat([...files.map(([name, data, options]) => cpioEntry(name, data, options)), cpioTrailer()]);
+
+function rpmHeader(region, strings = []) {
+  const count = strings.length + 1;
+  const intro = Buffer.from([142, 173, 232, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const trailer = Buffer.alloc(16);
+  trailer.writeUInt32BE(region); trailer.writeUInt32BE(7, 4);
+  trailer.writeInt32BE(-16 * count, 8); trailer.writeUInt32BE(16, 12);
+  const indexes = Buffer.alloc(count * 16);
+  indexes.writeUInt32BE(region); indexes.writeUInt32BE(7, 4); indexes.writeUInt32BE(16, 12);
+  const data = [trailer];
+  let size = 16;
+  strings.forEach(([tag, text], i) => {
+    const at = (i + 1) * 16, value = Buffer.from(text + "\0");
+    indexes.writeUInt32BE(tag, at); indexes.writeUInt32BE(6, at + 4);
+    indexes.writeUInt32BE(size, at + 8); indexes.writeUInt32BE(1, at + 12);
+    data.push(value); size += value.length;
+  });
+  intro.writeUInt32BE(count, 8); intro.writeUInt32BE(size, 12);
+  return Buffer.concat([intro, indexes, ...data]);
+}
+function rpmBytes(archive = cpio(), compressor = "gzip") {
+  const lead = Buffer.alloc(96);
+  lead.set([237, 171, 238, 219, 3, 0]); lead.writeUInt16BE(5, 78);
+  const sig = rpmHeader(62);
+  return Buffer.concat([lead, sig, Buffer.alloc((8 - sig.length % 8) % 8), rpmHeader(63, [[1124, "cpio"], [1125, compressor]]), gzipSync(archive)]);
+}
+
+test("RPM framing reader preserves exact original CPIO bytes", () => {
+  assert.deepEqual(readRpmPayload(rpmBytes()), cpio());
+  assert.deepEqual(inspectCpio(readRpmPayload(rpmBytes()), expected), inspectTar(tar(), expected));
+  assert.throws(() => readRpmPayload(rpmBytes(cpio(), "xz")));
+  const appended = Buffer.concat([rpmBytes(), gzipSync(cpio())]);
+  assert.throws(() => inspectCpio(readRpmPayload(appended), expected));
+  for (const suffix of [Buffer.from([1]), Buffer.alloc(8)]) assert.throws(() => readRpmPayload(Buffer.concat([rpmBytes(), suffix])));
+});
+
+test("RPM rejects truncation, corrupt gzip and invalid bounded header fields", () => {
+  const valid = rpmBytes();
+  for (let end = 0; end < valid.length; end++) assert.throws(() => readRpmPayload(valid.subarray(0, end)));
+  for (const offset of [0, 4, 6, 78, 80, 96, 100, 104, 108, 112, 116, 120, 124, 136, 144, valid.length - 8]) {
+    const changed = Buffer.from(valid); changed[offset] ^= 0xff;
+    assert.throws(() => readRpmPayload(changed));
+  }
+  const main = 144;
+  for (const [offset, value] of [[main + 8, 0xffffffff], [main + 12, 0xffffffff], [main + 48, 1124], [main + 40, 0xffffffff], [main + 44, 2]]) {
+    const changed = Buffer.from(valid); changed.writeUInt32BE(value, offset);
+    assert.throws(() => readRpmPayload(changed));
+  }
+  assert.throws(() => readRpmPayload(null));
+});
 
 test("original CPIO reader binds all resources without extraction", () => {
   assert.deepEqual(inspectCpio(cpio(), expected), inspectTar(tar(), expected));
@@ -400,7 +451,7 @@ test("GNU acceptance preserves full-stream framing, no-links and path guards", (
   }
 });
 
-test("RPM metadata is retained without claiming original payload inspection or invoking a normalizer", () => {
+test("RPM metadata and original payload are checked without invoking a normalizer", () => {
   const calls = [];
   const run = (command, args) => {
     calls.push(command);
@@ -409,14 +460,17 @@ test("RPM metadata is retained without claiming original payload inspection or i
     if (args.includes("--requires")) return Buffer.from("libc.so.6\n");
     assert.fail("Only RPM metadata queries are permitted");
   };
-  const report = inspectPackage("rpm", "/synthetic/misleading-9.9.rpm", packageBytes("rpm"), expected, run);
-  assert.equal(report.status, "unverified");
-  assert.equal(report.reason, "rpm-original-payload-validation-unavailable");
-  assert.equal(report.files, null);
-  assert.equal(report.sha256, digest(packageBytes("rpm")));
+  const report = inspectPackage("rpm", "/synthetic/misleading-9.9.rpm", rpmBytes(), expected, run);
+  assert.equal(report.status, "payload-inspected");
+  assert.equal(report.files.filter((file) => file.verifiedResource).length, 6);
+  assert.equal(report.sha256, digest(rpmBytes()));
   assert.equal(calls.length, 2);
   assert.ok(calls.every((command) => command === "/usr/bin/rpm"));
   assert.equal(report.metadata.declaredVersion, "0.5.0-1");
+  const invalid = inspectPackage("rpm", "/synthetic/bad.rpm", packageBytes("rpm"), expected, run);
+  assert.equal(invalid.status, "unverified");
+  assert.equal(invalid.reason, "tool-or-payload-validation-failed");
+  assert.equal(invalid.files, null);
 });
 
 test("tool errors and malformed payloads stay unverified with no raw diagnostics", () => {

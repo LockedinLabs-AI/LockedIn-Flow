@@ -3,7 +3,7 @@ import { lstat, realpath, mkdtemp, readdir, writeFile, rm } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { digest, debApplicationDigest, inspectPackage, limits, standardTool, verifyBuildIdentity, boundedFile } from "./linux-package-evidence.mjs";
+import { digest, linuxApplicationDigest, inspectPackage, limits, standardTool, verifyBuildIdentity, boundedFile } from "./linux-package-evidence.mjs";
 import { verifiedInventorySummary } from "./inventory-summary.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -32,9 +32,8 @@ async function main() {
   const model = JSON.parse(await boundedFile(path.join(root, "models.json"), resourceLimit));
   if (model.file !== "ggml-base.en.bin" || !/^[a-f0-9]{64}$/.test(model.sha256)) throw new Error();
   expected.model = model.sha256;
-  // Only DEB payload inspection currently consumes this reference. Other
-  // formats require their own producer transformation and remain unverified.
-  expected.application = debApplicationDigest(await boundedFile(path.join(root, "target/release/lockedin-flow-desktop"), limits.file));
+  const application = await boundedFile(path.join(root, "target/release/lockedin-flow-desktop"), limits.file);
+  const applicationDigests = Object.fromEntries(["deb", "rpm"].map((format) => [format, linuxApplicationDigest(application, format)]));
   const bundle = path.join(root, "target/release/bundle");
   // Reject redirected output directories; never write through a build-tree link.
   if (await realpath(bundle) !== bundle || !(await lstat(bundle)).isDirectory()) throw new Error();
@@ -61,7 +60,7 @@ async function main() {
         record = { ...record, bytes: bytes.length, sha256: digest(bytes) };
         const snapshot = path.join(scratch, "input" + extension);
         await writeFile(snapshot, bytes, { flag: "wx", mode: 0o600 });
-        record = inspectPackage(format, snapshot, bytes, expected);
+        record = inspectPackage(format, snapshot, bytes, { ...expected, application: applicationDigests[format] });
       } catch { /* Fixed classification only; do not expose file paths/tool errors. */ }
       report.packages.push(record);
     }

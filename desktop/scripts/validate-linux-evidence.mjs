@@ -66,7 +66,7 @@ function files(entries, inventoryHash) {
 
 function packageRecord(value, expectedFormat, inventoryHash) {
   if (value?.status === "payload-inspected") {
-    if (expectedFormat !== "deb") fail(); // RPM/AppImage original readers are unavailable.
+    if (!["deb", "rpm"].includes(expectedFormat)) fail(); // AppImage original reader remains unavailable.
     keys(value, ["format", "bytes", "sha256", "status", "licenseReview", "metadata", "files"]);
     metadata(value.metadata, expectedFormat);
     files(value.files, inventoryHash);

@@ -3,6 +3,20 @@
 This page records what the current LockedIn Flow candidate has actually passed and
 keeps source validation separate from installed-product acceptance.
 
+## RPM payload verification: native validation pending
+
+The candidate now reads the original RPM framing and bounded gzip payload,
+validates its newc CPIO archive without extraction or execution, and compares
+the application, model and compliance files with independent build references.
+The executable reference includes the RPM-specific marker written by pinned
+Tauri CLI 2.12.0. Malformed headers, unsafe archive entries, corrupted compressed
+data, missing resources and altered file digests remain rejected.
+
+Local tooling validation passed 200 tests with two Windows-only skips. These
+synthetic tests are not native RPM acceptance. AppImage payload inspection,
+component/license reconciliation, signing and installed-device acceptance remain
+separate requirements; a retained payload report does not authorize release.
+
 ## Installed Linux launch gate
 
 The desktop workflow now includes an installed-DEB launch check, in addition to

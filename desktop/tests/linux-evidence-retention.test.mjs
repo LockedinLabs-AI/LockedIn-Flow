@@ -70,6 +70,18 @@ test("missing inputs and tool failures can be retained only as explicitly unveri
   reject(report);
 });
 
+test("inspected RPM evidence retains unresolved release and AppImage boundaries", () => {
+  const report = fixture();
+  report.packages[1] = { ...structuredClone(report.packages[0]), format: "rpm", sha256: hash("synthetic-rpm") };
+  report.packages[1].metadata.architecture = "x86_64";
+  const reviewed = reviewEnvelope(encode(report), context());
+  assert.equal(reviewed.disposition, "incomplete-not-release-acceptance");
+  assert.equal(reviewed.evidence.packages[1].status, "payload-inspected");
+  reject(report, { ...context(), inspectorExitCode: 0 });
+  report.packages[1].files.pop();
+  reject(report);
+});
+
 test("exit 1, unexpected exits and a false exit 0 never authorize a partial or stale report", () => {
   for (const inspectorExitCode of [0, 1, 3, -1, "2", null]) reject(fixture(), { ...context(), inspectorExitCode });
   for (const index of [1, 2]) {

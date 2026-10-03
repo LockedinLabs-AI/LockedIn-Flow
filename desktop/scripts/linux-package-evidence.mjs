@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
+import { gunzipSync } from "node:zlib";
 
 export const limits = Object.freeze({ package: 512 * 1024 ** 2, payload: 768 * 1024 ** 2, file: 256 * 1024 ** 2, entries: 10000, metadata: 1024 * 1024 });
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -36,6 +37,67 @@ class EvidenceFailure extends Error {
 const fail = (category = "archive-header") => { throw new EvidenceFailure(category); };
 const names = new Set(["lockedin-flow", "locked-in-flow", "lockedin-flow-desktop", "locked-in-flow-desktop"]);
 const required = ["SBOM.cdx.json", "THIRD-PARTY-NOTICES.txt", "LICENSE.txt", "MODEL.json"];
+
+// Locate the original payload without rpm2cpio/tar normalization. RPM metadata
+// semantics/signatures still require librpm; this only validates bounded framing
+// and the pinned producer's cpio+gzip declaration. Never executes package code.
+export function readRpmPayload(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 128 || bytes.length > limits.package
+      || !bytes.subarray(0, 6).equals(Buffer.from([237, 171, 238, 219, 3, 0]))
+      || bytes.readUInt16BE(6) !== 0 || bytes.readUInt16BE(78) !== 5
+      || bytes.subarray(80, 96).some((byte) => byte !== 0)) fail();
+  function header(at, region) {
+    if (at + 16 > bytes.length || !bytes.subarray(at, at + 8).equals(Buffer.from([142, 173, 232, 1, 0, 0, 0, 0]))) fail();
+    const count = bytes.readUInt32BE(at + 8), size = bytes.readUInt32BE(at + 12);
+    if (count < 1 || count > 4096 || size < 16 || size > limits.metadata) fail("archive-bounds");
+    const start = at + 16 + count * 16, end = start + size;
+    if (end > bytes.length) fail("archive-bounds");
+    let previous = 0, values = 0;
+    const strings = new Map();
+    for (let i = 0; i < count; i++) {
+      const index = at + 16 + i * 16;
+      const tag = bytes.readUInt32BE(index), type = bytes.readUInt32BE(index + 4);
+      const offset = bytes.readInt32BE(index + 8), length = bytes.readUInt32BE(index + 12);
+      if (tag <= previous || type < 1 || type > 9 || offset < 0 || offset >= size || length < 1 || length > limits.metadata) fail();
+      values += length;
+      if (values > limits.entries * 16) fail("archive-bounds");
+      previous = tag;
+      const widths = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1 };
+      if (widths[type]) {
+        if (offset % widths[type] || offset + widths[type] * length > size) fail("archive-bounds");
+      } else {
+        if (type === 6 && length !== 1) fail();
+        let cursor = start + offset;
+        for (let n = 0; n < length; n++) {
+          const zero = bytes.indexOf(0, cursor);
+          if (zero < cursor || zero >= end) fail("archive-bounds");
+          if (type === 6 && [1124, 1125].includes(tag)) strings.set(tag, bytes.subarray(cursor, zero));
+          cursor = zero + 1;
+        }
+      }
+      if (i === 0) {
+        const trailer = start + offset;
+        if (tag !== region || type !== 7 || length !== 16
+            || bytes.readUInt32BE(trailer) !== region || bytes.readUInt32BE(trailer + 4) !== 7
+            || bytes.readInt32BE(trailer + 8) !== -count * 16 || bytes.readUInt32BE(trailer + 12) !== 16) fail();
+      }
+    }
+    return { end, strings };
+  }
+  const signature = header(96, 62);
+  const next = Math.ceil(signature.end / 8) * 8;
+  if (next > bytes.length || bytes.subarray(signature.end, next).some((byte) => byte !== 0)) fail("archive-framing");
+  const main = header(next, 63);
+  if (!main.strings.get(1124)?.equals(Buffer.from("cpio"))
+      || !main.strings.get(1125)?.equals(Buffer.from("gzip"))) fail();
+  const compressed = bytes.subarray(main.end);
+  if (!compressed.subarray(0, 3).equals(Buffer.from([31, 139, 8]))) fail();
+  try {
+    const decoded = gunzipSync(compressed, { maxOutputLength: limits.payload, info: true });
+    if (decoded.engine.bytesWritten !== compressed.length) fail("archive-framing");
+    return decoded.buffer;
+  } catch { fail("archive-framing"); }
+}
 
 export async function boundedFile(file, maximum) {
   const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
@@ -297,9 +359,12 @@ export function inspectPackage(format, snapshot, bytes, expected, run = standard
     } else {
       identity = run("/usr/bin/rpm", ["--noplugins", "-qp", "--queryformat", "%{NAME}\n%{VERSION}-%{RELEASE}\n%{ARCH}\n", snapshot]).toString("utf8");
       dependencies = run("/usr/bin/rpm", ["--noplugins", "-qp", "--requires", snapshot]).toString("utf8");
-      // Metadata queries do not prove the original RPM/CPIO payload was fully
-      // consumed. Keep it unverified until an original-format reader is reviewed.
-      return { ...result, reason: "rpm-original-payload-validation-unavailable", metadata: packageMetadata(format, identity, dependencies), files: null };
+      failureStage = "payload-read";
+      const archive = readRpmPayload(bytes);
+      failureStage = "metadata-validation";
+      const metadata = packageMetadata(format, identity, dependencies);
+      failureStage = "archive-validation";
+      return { ...result, status: "payload-inspected", metadata, files: inspectCpio(archive, expected) };
     }
     failureStage = "metadata-validation";
     const metadata = packageMetadata(format, identity, dependencies);
