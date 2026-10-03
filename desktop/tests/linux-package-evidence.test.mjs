@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, symlink, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { digest, debApplicationDigest, inspectTar, inspectCpio, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
+import { digest, debApplicationDigest, linuxApplicationDigest, inspectTar, inspectCpio, inspectPackage, packageMetadata, standardTool, limits, verifyBuildIdentity, boundedFile } from "../scripts/linux-package-evidence.mjs";
 
 // Only synthetic, in-memory USTAR fixtures. No application or model is run.
 const resourceRoot = "usr/lib/lockedin-flow-desktop";
@@ -141,6 +141,26 @@ test("DEB reference follows pinned bundle patching without weakening full-file i
     Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK"), packaged,
     Buffer.concat([source, Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK")]),
   ]) assert.throws(() => debApplicationDigest(invalid));
+});
+
+test("RPM reference derives the pinned producer token independently of packaged bytes", () => {
+  const source = Buffer.concat([Buffer.from([127, 69, 76, 70]), Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK\0synthetic-code\0__TAURI_BUNDLE_TYPE_VAR_DEB\0__TAURI_BUNDLE_TYPE_VAR_RPM")]);
+  const unchanged = Buffer.from(source);
+  const packaged = Buffer.from(source);
+  Buffer.from("__TAURI_BUNDLE_TYPE_VAR_RPM").copy(packaged, 4);
+  const reference = { ...expected, application: linuxApplicationDigest(source, "rpm") };
+  assert.equal(reference.application, digest(packaged));
+  assert.notEqual(reference.application, linuxApplicationDigest(source, "deb"));
+  assert.deepEqual(source, unchanged);
+  assert.equal(inspectCpio(cpio([[payload[0][0], packaged], ...payload.slice(1)]), reference).filter((file) => file.verifiedResource).length, 6);
+  const changed = Buffer.from(packaged);
+  changed[changed.length - 1] ^= 1;
+  for (const wrong of [changed, source]) {
+    assert.throws(() => inspectCpio(cpio([[payload[0][0], wrong], ...payload.slice(1)]), reference));
+  }
+  for (const format of [undefined, "RPM", "appimage", "", null]) assert.throws(() => linuxApplicationDigest(source, format));
+  assert.throws(() => linuxApplicationDigest(packaged, "rpm"));
+  assert.throws(() => linuxApplicationDigest(Buffer.concat([source, Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK")]), "rpm"));
 });
 
 test("bounded input reader rejects oversized files, empty files, directories, FIFOs and symlinks", { skip: process.platform === "win32" }, async () => {

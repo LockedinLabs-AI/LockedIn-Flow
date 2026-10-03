@@ -10,6 +10,11 @@ export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex"
 // into a package, then restores the build output. Derive the expected bytes
 // from that independent output; never normalize or trust the package payload.
 export function debApplicationDigest(reference) {
+  return linuxApplicationDigest(reference, "deb");
+}
+
+export function linuxApplicationDigest(reference, format) {
+  if (!["deb", "rpm"].includes(format)) throw new Error("Unsupported application reference format.");
   const token = Buffer.from("__TAURI_BUNDLE_TYPE_VAR_UNK");
   if (!Buffer.isBuffer(reference) || reference.length > limits.file
       || !reference.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]))) throw new Error("Invalid application reference.");
@@ -19,7 +24,7 @@ export function debApplicationDigest(reference) {
     throw new Error("Ambiguous application reference.");
   }
   const packaged = Buffer.from(reference);
-  Buffer.from("__TAURI_BUNDLE_TYPE_VAR_DEB").copy(packaged, offset);
+  Buffer.from("__TAURI_BUNDLE_TYPE_VAR_" + format.toUpperCase()).copy(packaged, offset);
   return digest(packaged);
 }
 class EvidenceFailure extends Error {
