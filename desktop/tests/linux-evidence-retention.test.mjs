@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { reviewEnvelope, prepareReviewReport, maxReportBytes } from "../scripts/validate-linux-evidence.mjs";
 import { noticeWriter, summaryScope } from "../scripts/inventory-summary.mjs";
+import { reconcileHostReferences, hostReferenceScope } from "../scripts/linux-host-references.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const encode = (value) => Buffer.from(JSON.stringify(value, null, 2) + "\n");
@@ -30,6 +31,26 @@ function fixture() {
   };
 }
 const reject = (value, ctx = context()) => assert.throws(() => reviewEnvelope(encode(value), ctx), /^Error: Linux evidence validation failed; content withheld\.$/);
+
+test("host references bind the exact payload set without approving source or license claims", () => {
+  const report = fixture();
+  report.packages[0].files.push({ pathSha256: hash("synthetic-library"), sha256: hash("synthetic-elf"), bytes: 17, type: "file", mode: 0o644, elf: true, componentMapping: "unresolved" });
+  const file = report.packages[0].files.at(-1);
+  const reference = { sha256: file.sha256, bytes: file.bytes, binaryIdentitySha256: hash("binary"), sourceIdentitySha256: hash("source"), systemPathSha256: hash("path"), copyright: { status: "unavailable" } };
+  report.hostReferences = reconcileHostReferences(report.packages, hash("database"), [reference], { runtimePaths: 1, sizeCandidates: 1, hashedElfFiles: 1, unreadableFiles: 0 });
+  const result = reviewEnvelope(encode(report), context());
+  assert.equal(result.disposition, "incomplete-not-release-acceptance");
+  assert.equal(result.evidence.packages[0].files.at(-1).componentMapping, "unresolved");
+  for (const mutate of [
+    (r) => { r.hostReferences.packages[0].files[0].references[0].systemPath = "private"; },
+    (r) => { r.hostReferences.packages[0].files[0].references[0].copyright = { status: "retained-text" }; },
+    (r) => { r.hostReferences.packages.pop(); },
+    (r) => { r.hostReferences.packages[0].files[0].references[0].sha256 = hash("modified"); },
+    (r) => { r.hostReferences.packages[0].files[0].bytes++; },
+  ]) { const bad = structuredClone(report); mutate(bad); reject(bad); }
+  report.hostReferences = { scope: hostReferenceScope, status: "unavailable", reason: "host-reference-collection-failed" };
+  assert.equal(reviewEnvelope(encode(report), context()).evidence.hostReferences.status, "unavailable");
+});
 
 test("optional summary binds inspected notice bytes without changing incomplete disposition", () => {
   const report = fixture(), writer = noticeWriter();

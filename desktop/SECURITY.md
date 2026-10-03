@@ -148,10 +148,9 @@ After a reviewed native Linux build and the existing artifact verifier, run
 `node scripts/verify-linux-packages.mjs` from `desktop/`. The build host must
 already provide Node 22.15+, `dpkg-deb` and `rpm`.
 The checker does not install tools, fetch dependencies, run package scripts,
-install packages or execute their binaries. Native DEB and RPM payload checks
-have passed for the candidate documented in [validation evidence](../docs/validation.md).
-AppImage native validation remains pending; filesystem fixtures alone do not
-establish installer acceptance.
+install packages or execute their binaries. Native DEB, RPM and AppImage payload
+checks have passed for the candidate documented in [validation evidence](../docs/validation.md).
+Payload checks do not establish signing, license or installed-device acceptance.
 
 It requires a clean checkout matching the staged Linux inventory and lockfile
 hashes. It reads private snapshots of the final archives and queries DEB/RPM metadata.
@@ -207,6 +206,44 @@ Control scripts, signatures, installed-device behavior and Windows input/license
 closure remain outside this check. Exit 2 records partial evidence, not acceptance;
 exit 1 means no report was recorded. Exit 0 means payload inspection only, not
 license or release approval.
+
+### Exact host-file references
+
+The checker also collects a separate, optional `hostReferences` section for
+inspected ELF files other than the verified application. It queries the native
+build host's installed dpkg database using a fixed command and compares complete
+file bytes, not filenames, ELF build IDs or inferred dependencies. Its bounded
+search reads only package-owned regular files under `/usr/lib`, `/usr/libexec`
+and `/lib`; it does not walk arbitrary directories or execute those files.
+Symlink files and resolved paths outside those roots are not followed. The
+database must remain unchanged across collection. Byte, record and time limits
+prevent an unbounded scan. Unreadable-file counts are explicit.
+
+Each exact match carries hashes of the binary package/version/architecture,
+source package/version and canonical system path. Package identity hashes use
+UTF-8 `JSON.stringify(["binary-dpkg-v1", binaryName, version, architecture])` and
+`JSON.stringify(["source-dpkg-v1", sourceName, sourceVersion])`, without trimming
+or normalization. The full query result has its own SHA-256 digest. Raw database
+text, paths, package names, versions and tool errors are not retained in the
+public report. These identifiers support private reconciliation; they are not
+a human-readable component inventory or proof of trusted package provenance.
+
+Zero exact matches remain unmatched; multiple matches remain ambiguous. A
+modified library cannot inherit attribution merely because its name or build ID
+matches. A build ID [is not a file-content checksum](https://sourceware.org/binutils/docs/ld/Options.html#index-build-id).
+The dpkg ownership/source fields are [installed-database observations](https://manpages.debian.org/bookworm/dpkg/dpkg-query.1.en.html),
+not verification of the originating repository or package archive.
+
+Where present, the owner's bounded `/usr/share/doc/<package>/copyright` file is
+hashed separately. This is explicitly `host-file-hashed-not-retained`: the text
+has not thereby been added to the installer, mapped to every bundled component,
+or approved for redistribution. Missing or redirected notices stay unavailable.
+Collector failure records only `host-reference-collection-failed`; it cannot
+reuse another run's evidence. Report validation binds every reference to the
+actual package and file hashes. Existing `componentMapping`, `licenseReview`
+and release disposition remain unresolved even when exact host bytes match.
+Native validation of this new collector is pending; synthetic tests and a native
+dpkg output-format check do not establish complete AppImage attribution.
 
 CI retains only a schema-validated, fixed JSON report for pull requests, including
 failed/partial inspection results. Its acceptance step fails unless all three

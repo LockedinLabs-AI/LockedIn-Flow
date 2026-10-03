@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { digest, linuxApplicationDigest, inspectPackage, limits, standardTool, verifyBuildIdentity, boundedFile } from "./linux-package-evidence.mjs";
 import { verifiedInventorySummary } from "./inventory-summary.mjs";
+import { collectHostReferences, hostReferenceScope } from "./linux-host-references.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resourceLimit = 16 * 1024 ** 2;
@@ -74,6 +75,11 @@ async function main() {
       report.packages.push(record);
     }
     if (report.packages[2].status !== "payload-inspected") report.unresolved.push("appimage-payload");
+    try {
+      report.hostReferences = await collectHostReferences(report.packages);
+    } catch {
+      report.hostReferences = { scope: hostReferenceScope, status: "unavailable", reason: "host-reference-collection-failed" };
+    }
     // Exclusive creation preserves an earlier receipt instead of overwriting it.
     await writeFile(path.join(bundle, "LINUX-PACKAGE-EVIDENCE.json"), JSON.stringify(report, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   } finally { await rm(scratch, { recursive: true, force: true }); }

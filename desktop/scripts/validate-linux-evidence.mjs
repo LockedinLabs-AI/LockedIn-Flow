@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { validateInventorySummary } from "./inventory-summary.mjs";
+import { validateHostReferences } from "./linux-host-references.mjs";
 
 export const maxReportBytes = 16 * 1024 ** 2;
 const sha = /^[a-f0-9]{64}$/;
@@ -120,7 +121,7 @@ export function reviewEnvelope(bytes, context) {
       || typeof context.inspectionStartedAt !== "string" || !/^[1-9]\d{9,12}$/.test(context.inspectionStartedAt)) fail();
   if (context.event === "pull_request" ? typeof context.proposedHeadRevision !== "string" || !commit.test(context.proposedHeadRevision) : context.proposedHeadRevision !== null) fail();
   if (![0, 2].includes(context.inspectorExitCode)) fail(); // Exit 1 never authorizes a stale report.
-  keys(report, ["schemaVersion", "product", "builtSourceRevision", "target", "scope", "coverage", "pathPolicy", "sourceInventorySha256", "unresolved", "packages"], ["inventorySummary"]);
+  keys(report, ["schemaVersion", "product", "builtSourceRevision", "target", "scope", "coverage", "pathPolicy", "sourceInventorySha256", "unresolved", "packages"], ["inventorySummary", "hostReferences"]);
   equal(report.schemaVersion, 1);
   equal(report.product, "LockedIn Flow");
   equal(report.builtSourceRevision, context.checkoutRevision);
@@ -134,6 +135,9 @@ export function reviewEnvelope(bytes, context) {
   equal(JSON.stringify(report.unresolved), JSON.stringify(unresolved));
   if (!Array.isArray(report.packages) || report.packages.length !== 3) fail();
   ["deb", "rpm", "appimage"].forEach((format, index) => packageRecord(report.packages[index], format, report.sourceInventorySha256));
+  if (Object.hasOwn(report, "hostReferences")) {
+    try { validateHostReferences(report.hostReferences, report.packages); } catch { fail(); }
+  }
   if (Object.hasOwn(report, "inventorySummary")) {
     try { validateInventorySummary(report.inventorySummary, report.sourceInventorySha256); } catch { fail(); }
     for (const pkg of report.packages.filter((p) => p.status === "payload-inspected")) {

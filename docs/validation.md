@@ -5,6 +5,33 @@ keeps source validation separate from installed-product acceptance.
 
 ## Package validation: 3 October 2026
 
+[Native run 37148286084](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37148286084)
+passed on Windows and Linux for source
+`be2d2a75e8150e51980f2c1351161a6e043334d7` at actual merge checkout
+`8aa9a7a10ba0ffebfa76853135bdc7120a239524`. Its schema-validated retained report
+verifies original DEB (26 entries), RPM (11 entries) and AppImage (537 entries)
+payloads. Each contains the exact application, pinned model and four compliance
+resources compared with independent staged references. The report SHA-256 is
+`36d5a63d5a423ccb77019fcb7a958bf53ab5fc2001dfc0d7f82f3903bfc60520`.
+
+Windows passed NSIS/MSI installation, branding, integrity and removal, plus
+matching Microsoft-signed offline WebView2 input checks. Linux passed installed
+DEB window/process launch without an external network interface, integrity and
+removal. Both passed synthetic offline recognition. General CI, Security,
+dependency review and public-metadata checks passed; evaluation attestation and
+installer uploads were skipped. RPM/AppImage installation, physical microphone,
+rendered-content and user-device acceptance are not established by these checks.
+
+The AppImage contains 174 ELF files. Its Cargo source inventory still has 349
+components, with 346 retained-text and three source-reference-only records;
+these are different inventory scopes, not equivalent component counts. File
+hashes do not close native source/version or license mapping. The subsequent
+exact host-file reference collector is locally tested but awaits its own native
+run. It preserves unmatched/ambiguous files and does not turn a host copyright
+hash into a shipped notice or license approval. See [security boundaries](../desktop/SECURITY.md#exact-host-file-references).
+
+### Earlier RPM and AppImage implementation evidence
+
 The candidate now reads the original RPM framing and bounded gzip payload,
 validates its newc CPIO archive without extraction or execution, and compares
 the application, model and compliance files with independent build references.
@@ -27,8 +54,8 @@ directory/index consistency, inode reachability, fragments, hard links and safe
 relative links, then verifies required resources against staged references.
 Unit tests use synthetic inputs. A separate cross-check with the official
 SquashFS writer exercises real filesystem encoding; it is not an installed
-AppImage, microphone or device test. Native AppImage validation of this change
-is pending. Component/license reconciliation, signing and installed-device
+AppImage, microphone or device test. Native AppImage payload validation is now
+recorded above. Component/license reconciliation, signing and installed-device
 acceptance remain separate requirements; a retained payload report does not
 authorize release.
 
